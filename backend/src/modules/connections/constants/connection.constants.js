@@ -1,0 +1,37 @@
+// backend/src/modules/connections/constants/connection.constants.js
+const REQUEST_STATUS = { PENDING: "pending", ACCEPTED: "accepted", REJECTED: "rejected", CANCELLED: "cancelled" };
+const REQUEST_STATUS_VALUES = Object.values(REQUEST_STATUS);
+const REQUEST_TERMINAL_STATUSES = [REQUEST_STATUS.REJECTED, REQUEST_STATUS.CANCELLED];
+const CANCELLABLE_REQUEST_STATUSES = [REQUEST_STATUS.PENDING];
+
+const CONNECTION_STATUS = { ACTIVE: "active", REMOVED: "removed" };
+const CONNECTION_STATUS_VALUES = Object.values(CONNECTION_STATUS);
+
+const RELATIONSHIP_STATUS = {
+  NONE: "none",
+  PENDING_SENT: "pending_sent",
+  PENDING_RECEIVED: "pending_received",
+  CONNECTED: "connected"
+};
+
+const LIMITS = { MESSAGE_MAX: 300, REJECTION_REASON_MAX: 300 };
+const PAGINATION = { DEFAULT_PAGE: 1, DEFAULT_LIMIT: 20, MAX_LIMIT: 50 };
+
+const NOTIFICATION_EVENTS = {
+  REQUEST_CREATED: "connection.request.created",
+  REQUEST_ACCEPTED: "connection.request.accepted",
+  REQUEST_REJECTED: "connection.request.rejected"
+};
+
+module.exports = {
+  REQUEST_STATUS,
+  REQUEST_STATUS_VALUES,
+  REQUEST_TERMINAL_STATUSES,
+  CANCELLABLE_REQUEST_STATUSES,
+  CONNECTION_STATUS,
+  CONNECTION_STATUS_VALUES,
+  RELATIONSHIP_STATUS,
+  LIMITS,
+  PAGINATION,
+  NOTIFICATION_EVENTS
+};

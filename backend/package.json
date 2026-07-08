@@ -1,0 +1,51 @@
+{
+  "name": "bcet-connect-backend",
+  "version": "1.0.0",
+  "description": "BCET Connect Backend API",
+  "main": "src/core/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/core/server.js",
+    "dev": "nodemon src/core/server.js",
+    "test": "echo \"No tests configured yet\"",
+    "health": "node src/core/server.js",
+    "clean": "npm cache clean --force"
+  },
+  "keywords": [
+    "bcet-connect",
+    "backend",
+    "express",
+    "mongodb",
+    "career-platform",
+    "recommendation-engine",
+    "uip",
+    "search-engine"
+  ],
+  "author": "Yuvraj Singh",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "file-type": "^22.0.1",
+    "helmet": "^8.2.0",
+    "joi": "^18.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.7.0",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "node-cron": "^4.5.0",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+// backend/src/modules/mentorship/controllers/mentorRequest.controller.js
+const mentorRequestService=require("../services/mentorRequest.service");
+const sendResponse=require("../../../shared/response/sendResponse");
+const asyncHandler=require("../../../shared/utils/asyncHandler");
+const logger=require("../../../shared/logger/logger");
+const createRequestController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.createRequest(req.user.id,req.body);logger.info("Mentorship request created",{module:"Mentorship",studentId:req.user.id});return sendResponse(res,{statusCode:201,...result});});
+const acceptRequestController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.acceptRequest(req.params.requestId,req.user.id,req.body.meetingNote);logger.info("Mentorship request accepted",{module:"Mentorship",mentorId:req.user.id,requestId:req.params.requestId});return sendResponse(res,result);});
+const rejectRequestController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.rejectRequest(req.params.requestId,req.user.id,req.body.reason);logger.info("Mentorship request rejected",{module:"Mentorship",mentorId:req.user.id,requestId:req.params.requestId});return sendResponse(res,result);});
+const cancelRequestController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.cancelRequest(req.params.requestId,req.user.id);logger.info("Mentorship request cancelled",{module:"Mentorship",studentId:req.user.id,requestId:req.params.requestId});return sendResponse(res,result);});
+const getMyRequestsController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.getMyRequests(req.user.id,req.query);return sendResponse(res,{success:true,message:"Your mentorship requests fetched",data:{requests:result.requests},meta:{pagination:result.pagination}});});
+const getReceivedRequestsController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.getReceivedRequests(req.user.id,req.query);return sendResponse(res,{success:true,message:"Received mentorship requests fetched",data:{requests:result.requests},meta:{pagination:result.pagination}});});
+const getRequestByIdController=asyncHandler(async(req,res)=>{const result=await mentorRequestService.getRequestById(req.params.requestId,req.user.id);return sendResponse(res,result);});
+module.exports={createRequestController,acceptRequestController,rejectRequestController,cancelRequestController,getMyRequestsController,getReceivedRequestsController,getRequestByIdController};
