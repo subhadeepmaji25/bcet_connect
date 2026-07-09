@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useComments } from "../hooks/useComments";
 import { feedApi } from "../../../api/feedApi";
 import CommentItem from "./CommentItem";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, MessageSquare } from "lucide-react";
+import toast from "react-hot-toast";
 
 const CommentSection = ({ postId }) => {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } = useComments(postId);
@@ -16,9 +17,10 @@ const CommentSection = ({ postId }) => {
     try {
       await feedApi.createComment(postId, { content: commentText });
       setCommentText("");
-      refetch(); // Reload comments to show the new one
+      await refetch();
+      toast.success("Comment posted");
     } catch (err) {
-      console.error("Failed to post comment", err);
+      toast.error(err?.response?.data?.message || "Failed to post comment");
     } finally {
       setIsSubmitting(false);
     }
@@ -41,7 +43,11 @@ const CommentSection = ({ postId }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Top-level comment input */}
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+        <MessageSquare className="w-4 h-4" />
+        Discussion
+      </div>
+
       <div className="flex gap-2">
         <input
           value={commentText}
@@ -59,7 +65,6 @@ const CommentSection = ({ postId }) => {
         </button>
       </div>
 
-      {/* Comment list */}
       {isLoading ? (
         <div className="flex justify-center py-4">
           <Loader2 className="w-6 h-6 animate-spin text-primary-500" />

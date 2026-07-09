@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Sparkles, Briefcase, TrendingUp, ChevronRight, Zap, Target, Award, PlayCircle, ExternalLink, Activity, CheckCircle2, FileText, AlertTriangle
+  Sparkles, TrendingUp, ChevronRight, Zap, Target, PlayCircle, Activity, CheckCircle2, FileText, AlertTriangle
 } from 'lucide-react';
 import { getRecommendedJobs } from '../../api/recommendation.api';
 import { getResumes } from '../../api/users.api';
@@ -194,9 +194,9 @@ export default function RecommendedJobsPage() {
               We analyze your skills, parse industry trends, and use predictive modeling to find opportunities where you will thrive.
             </p>
             <div className="flex gap-4">
-              <button className="px-6 py-3 bg-white text-slate-900 font-semibold rounded-xl hover:bg-slate-100 transition-colors shadow-lg">
+              <Link to="/profile" className="px-6 py-3 bg-white text-slate-900 font-semibold rounded-xl hover:bg-slate-100 transition-colors shadow-lg">
                 Refine Match Settings
-              </button>
+              </Link>
             </div>
           </motion.div>
           
@@ -282,7 +282,7 @@ export default function RecommendedJobsPage() {
                       <div className="h-full bg-gradient-to-r from-[#635BFF] to-[#8B5CF6] rounded-full" style={{ width: `${meta.profileCompletion || 0}%` }} />
                     </div>
                     {(meta.profileCompletion || 0) < 100 && (
-                       <Link to="/profile" className="text-xs text-[#635BFF] font-semibold hover:underline">Complete profile to 100% →</Link>
+                       <Link to="/profile" className="text-xs text-[#635BFF] font-semibold hover:underline">Complete profile to 100% &gt;</Link>
                     )}
                   </div>
                 </div>

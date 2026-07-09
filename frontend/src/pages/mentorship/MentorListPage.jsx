@@ -34,11 +34,11 @@ export default function MentorListPage() {
   const mentors = data?.mentors || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,91,255,0.10),_transparent_42%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header & Search */}
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] border border-white/70">
           <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
             <div>
               <div className="flex items-center gap-4">
@@ -62,7 +62,7 @@ export default function MentorListPage() {
                   </Link>
                 )}
               </div>
-              <p className="text-slate-500 mt-2">Connect with industry experts who can guide your career journey.</p>
+              <p className="text-slate-600 mt-2 max-w-2xl">Connect with industry experts who can guide your career journey, review your path, and help you move with clarity.</p>
               
               {/* Mobile button */}
               {(user?.role === 'alumni' || user?.role === 'faculty') && !user?.isMentor && (
@@ -94,6 +94,21 @@ export default function MentorListPage() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm focus:border-primary-500 outline-none transition-all focus:bg-white shadow-sm"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Focus</p>
+              <p className="text-sm font-bold text-slate-800 mt-1">Career guidance and skill growth</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Access</p>
+              <p className="text-sm font-bold text-slate-800 mt-1">Verified mentors only if needed</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Mode</p>
+              <p className="text-sm font-bold text-slate-800 mt-1">Request, review, then schedule</p>
             </div>
           </div>
 

@@ -66,11 +66,11 @@ export default function MentorProfilePage() {
   const displayRole = designation || currentRole;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,91,255,0.10),_transparent_42%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Header Card */}
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 relative overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] border border-white/70 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-primary-500/10 to-blue-500/10" />
           
           <div className="relative pt-8 flex flex-col md:flex-row gap-8 items-start">
@@ -90,6 +90,14 @@ export default function MentorProfilePage() {
                   <p className="text-lg text-slate-600 font-medium mt-1">
                     {displayRole} {displayCompany ? `at ${displayCompany}` : ''}
                   </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Mentor Profile
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] bg-slate-50 text-slate-700 border border-slate-200">
+                      {verificationStatus === 'verified' ? 'Verified' : 'Pending Review'}
+                    </span>
+                  </div>
                   
                   <div className="flex items-center gap-4 mt-4 text-sm font-bold">
                     <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-xl">
@@ -123,15 +131,15 @@ export default function MentorProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-8">
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900 mb-4">About Me</h2>
+            <div className="bg-white/90 backdrop-blur-xl rounded-[1.75rem] p-8 shadow-[0_16px_60px_rgba(15,23,42,0.06)] border border-white/70">
+              <h2 className="text-xl font-black text-slate-900 mb-4">About Me</h2>
               <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">
                 {bio || "This mentor is ready to guide you!"}
               </p>
             </div>
 
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900 mb-6">Expertise Domains</h2>
+            <div className="bg-white/90 backdrop-blur-xl rounded-[1.75rem] p-8 shadow-[0_16px_60px_rgba(15,23,42,0.06)] border border-white/70">
+              <h2 className="text-xl font-black text-slate-900 mb-6">Expertise Domains</h2>
               <div className="flex flex-wrap gap-3">
                 {domains.map(d => (
                   <span key={d} className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold text-sm">
@@ -144,7 +152,7 @@ export default function MentorProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-8">
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <div className="bg-white/90 backdrop-blur-xl rounded-[1.75rem] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.06)] border border-white/70">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
                 <Globe className="w-5 h-5 text-primary-500" /> Languages
               </h2>
@@ -157,7 +165,7 @@ export default function MentorProfilePage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <div className="bg-white/90 backdrop-blur-xl rounded-[1.75rem] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.06)] border border-white/70">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
                 <Clock className="w-5 h-5 text-primary-500" /> Availability
               </h2>
@@ -190,7 +198,7 @@ export default function MentorProfilePage() {
             
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-lg bg-white rounded-[1.75rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                 <h3 className="text-xl font-bold text-slate-900">Request Mentorship</h3>

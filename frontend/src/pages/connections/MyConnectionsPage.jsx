@@ -4,13 +4,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, UserX, MessageSquare, ExternalLink,
-  Search, UserPlus, Sparkles, X, Briefcase, GraduationCap, MapPin, Activity, CheckCircle2, MoreHorizontal
+  Search, UserPlus, X, Briefcase, GraduationCap, MapPin, Activity, CheckCircle2, MoreHorizontal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getMyConnections, removeConnection } from '../../api/connections.api';
 import { startConversation } from '../../api/communication.api';
 import Avatar from '../../components/ui/Avatar';
-import { ROLE_LABELS, ROLE_COLORS } from '../../constants/appConstants';
+import { ROLE_LABELS } from '../../constants/appConstants';
 import { normalizeUser } from '../../utils/normalize';
 
 // --- Premium Profile Card Component ---
@@ -48,14 +48,30 @@ function ConnectionCard({ conn, index, onMessage, onRemove, isMessaging, isRemov
         </div>
 
         {/* Info */}
-        <div className="flex-1">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Link to={`/profile/${personId}`} className="font-bold text-slate-900 text-lg hover:text-[#635BFF] transition-colors truncate max-w-[180px]">
-              {displayName}
-            </Link>
-            {person.isVerified && <CheckCircle2 className="w-4 h-4 text-[#635BFF]" />}
-          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Link to={`/profile/${personId}`} className="font-bold text-slate-900 text-lg hover:text-[#635BFF] transition-colors truncate max-w-[180px]">
+                {displayName}
+              </Link>
+              {person.isVerified && <CheckCircle2 className="w-4 h-4 text-[#635BFF]" />}
+            </div>
           <p className="text-sm text-slate-500 mb-2 truncate">@{person.username}</p>
+
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/15">
+              {ROLE_LABELS[person.role] || person.role || 'Network'}
+            </span>
+            {person.isMentor && (
+              <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] bg-amber-50 text-amber-700 border border-amber-200">
+                Mentor
+              </span>
+            )}
+            {person.company && (
+              <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] bg-slate-50 text-slate-600 border border-slate-200 truncate max-w-[160px]">
+                {person.company}
+              </span>
+            )}
+          </div>
 
           <p className="text-sm font-medium text-slate-700 line-clamp-1 mb-3">
             {person.headline || `${ROLE_LABELS[person.role] || person.role} at BCET`}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,9 +6,13 @@
 
 @layer base {
   :root {
-    --color-bg: #f8fafc; /* slate-50 */
+    --color-bg: #f3f6fb;
     --color-surface: #ffffff;
-    --color-border: #e2e8f0; /* slate-200 */
+    --color-border: #dbe3ef;
+    --color-ink: #102033;
+    --color-muted: #5f728c;
+    --color-accent: #0f766e;
+    --color-accent-soft: #dff7f3;
   }
 
   * {
@@ -28,32 +32,40 @@
   }
 
   html {
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Manrope", system-ui, sans-serif;
     background-color: var(--color-bg);
-    color: #1e293b; /* slate-800 */
+    color: var(--color-ink);
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background: var(--color-bg);
+    background:
+      radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 28%),
+      radial-gradient(circle at top right, rgba(37, 99, 235, 0.06), transparent 24%),
+      linear-gradient(180deg, #f7fafc 0%, #eef4fb 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: "Outfit", sans-serif;
+    font-family: "Sora", sans-serif;
     font-weight: 700;
-    color: #0f172a; /* slate-900 */
+    color: #102033;
   }
 }
 
 @layer components {
   /* No more heavy glassmorphism - clean enterprise cards */
   .glass {
-    @apply bg-white border border-slate-200;
+    @apply border backdrop-blur-xl;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(226, 232, 240, 0.8);
   }
 
   .glass-card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm transition-shadow duration-200 hover:shadow-md;
+    @apply rounded-2xl border transition-all duration-200 hover:shadow-[0_18px_50px_rgba(15,23,42,0.08)];
+    background-color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(226, 232, 240, 0.8);
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
   }
 
   .btn-primary {
@@ -109,6 +121,13 @@
     @apply min-h-screen bg-transparent;
   }
 
+  .page-shell {
+    @apply rounded-[28px] border backdrop-blur-xl;
+    background-color: rgba(255, 255, 255, 0.88);
+    border-color: rgba(226, 232, 240, 0.8);
+    box-shadow: 0 14px 44px rgba(15, 23, 42, 0.06);
+  }
+
   .section-title {
     @apply font-display text-xl font-semibold text-slate-900 flex items-center gap-2;
   }
@@ -122,12 +141,12 @@
   }
 
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900
-           hover:bg-slate-100 transition-all duration-200 text-sm font-medium;
+    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900
+           hover:bg-slate-100/90 transition-all duration-200 text-sm font-semibold;
   }
 
   .nav-link.active {
-    @apply text-primary-700 bg-primary-50 font-semibold;
+    @apply text-teal-800 bg-teal-50 border border-teal-100 shadow-sm;
   }
 
   .tab-btn {
@@ -143,7 +162,7 @@
 
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%);
+    background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

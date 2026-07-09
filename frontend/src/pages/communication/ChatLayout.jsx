@@ -16,6 +16,7 @@ import {
   getConversationById, getMessages, sendMessage, markAsRead,
   editMessage, deleteMessage, uploadChatFile, uploadChatVoiceNote, uploadChatVideo
 } from '../../api/communication.api';
+import { getCommunityById } from '../../api/community.api';
 import { getPublicProfile } from '../../api/users.api';
 import { getMySessions } from '../../api/mentorship.api';
 import { useAuth } from '../../hooks/useAuth';
@@ -27,6 +28,30 @@ const toStr = (id) => {
   if (typeof id === 'object') return (id._id || id.id)?.toString() || id.toString();
   return id.toString();
 };
+
+const sameId = (a, b) => {
+  const aStr = toStr(a);
+  const bStr = toStr(b);
+  return !!aStr && !!bStr && aStr === bStr;
+};
+
+const hasCurrentUser = (ids = [], userId) => (ids || []).some((id) => sameId(id, userId));
+
+const TagPill = ({ children, className = "" }) => (
+  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] border ${className}`}>
+    {children}
+  </span>
+);
+
+const SectionCard = ({ title, icon: Icon, children }) => (
+  <div>
+    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
+      {Icon ? <Icon className="w-3.5 h-3.5" /> : null}
+      {title}
+    </h4>
+    <div className="space-y-2.5">{children}</div>
+  </div>
+);
 
 const formatMessageTime = (dateString) => {
   const date = new Date(dateString);
@@ -265,6 +290,11 @@ export default function ChatLayout() {
   const activeConv = convData?.data?.conversation || convData?.data || inboxConv || null;
   const canSendMessage = convData?.data?.canSendMessage ?? true;
   const mentorshipSession = convData?.data?.mentorshipSession || null;
+  const communityId = toStr(activeConv?.communityId?._id || activeConv?.communityId);
+  const isCommunityConversation = activeConv?.type === 'community' || !!communityId;
+  const conversationTitle = isCommunityConversation
+    ? (activeConv?.communityId?.name || activeConv?.communityName || 'Community Chat')
+    : (activeConv?.type === 'mentorship' ? 'Mentorship Chat' : 'Direct Chat');
 
   // 3. Mark as Read (when activeConv loads)
   useEffect(() => {
@@ -299,6 +329,18 @@ export default function ChatLayout() {
   });
   
   const profileDoc = partnerProfileData?.data?.profile || partnerProfileData?.data || {};
+
+  const { data: communityData } = useQuery({
+    queryKey: ['community-chat-meta', communityId],
+    queryFn: async () => {
+      if (!communityId) return null;
+      try { return await getCommunityById(communityId); } catch { return { data: null }; }
+    },
+    enabled: !!communityId,
+    staleTime: 60000,
+  });
+  const communityDoc = communityData?.data?.community || communityData?.data || activeConv?.communityId || null;
+  const hasCommunityMeta = !!(communityDoc?.name || communityDoc?.slug || communityDoc?.description);
 
   // 5. Mentorship Sessions (for banner)
   const { data: studentSessionsData } = useQuery({
@@ -340,7 +382,16 @@ export default function ChatLayout() {
     skills: profileDoc?.mergedSkills || [],
     socialLinks: profileDoc?.socialLinks || {}
   };
-  const partnerFirstName = chatPartner.fullName?.split(' ')[0] || chatPartner.username || 'User';
+  const partnerFirstName = isCommunityConversation
+    ? 'Community'
+    : (chatPartner.fullName?.split(' ')[0] || chatPartner.username || 'User');
+  const communityHeaderName = communityDoc?.name || activeConv?.communityName || conversationTitle;
+  const communityHeaderAvatar = communityDoc?.avatar || activeConv?.communityAvatar || '';
+  const isMentorConversation = activeConv?.type === 'mentorship' || !!chatPartner.isMentor;
+  const conversationKindLabel = isCommunityConversation ? "Community" : (isMentorConversation ? "Mentor" : "User");
+  const conversationAbout = isCommunityConversation
+    ? communityDoc?.description || "Community conversation"
+    : (chatPartner.headline || chatPartner.currentRole || chatPartner.branch || "User profile");
 
   // 6. Fetch Messages
   const { data: messagesData, isPending: msgsLoading } = useQuery({
@@ -444,9 +495,9 @@ export default function ChatLayout() {
     
     // Filter by tab (archived vs active)
     if (tab === 'archived') {
-      list = list.filter(c => c.status === 'archived' || c.archivedBy?.includes(myIdStr));
+      list = list.filter(c => c.status === 'archived' || hasCurrentUser(c.archivedBy, myIdStr));
     } else {
-      list = list.filter(c => c.status !== 'archived' && !c.archivedBy?.includes(myIdStr));
+      list = list.filter(c => c.status !== 'archived' && !hasCurrentUser(c.archivedBy, myIdStr));
     }
 
     // Filter by search query
@@ -507,12 +558,18 @@ export default function ChatLayout() {
             <div className="p-8 text-center text-slate-500">
               <MessageSquare className="w-10 h-10 mx-auto text-slate-300 mb-3" />
               <p className="text-sm font-semibold">No conversations found.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {tab === 'archived' ? 'Archived chats will appear here.' : 'Start a direct or mentorship conversation from a profile or request.'}
+              </p>
             </div>
           ) : (
             filteredConversations.map(conv => {
               const other = findOtherParticipant(conv.participants);
               const isActive = conv._id === conversationId;
-              const isArchived = conv.status === 'archived' || conv.archivedBy?.includes(myIdStr);
+              const isArchived = conv.status === 'archived' || hasCurrentUser(conv.archivedBy, myIdStr);
+              const title = conv.type === 'community'
+                ? (conv.communityId?.name || conv.communityName || 'Community Chat')
+                : (other?.fullName || other?.username || 'User');
               return (
                 <div key={conv._id} className="relative group">
                   <Link
@@ -524,13 +581,13 @@ export default function ChatLayout() {
                     } border`}
                   >
                     <div className="relative">
-                      <Avatar src={other?.avatar} name={other?.fullName || other?.username || '?'} size="md" className="rounded-[14px]" />
+                      <Avatar src={conv.type === 'community' ? (conv.communityId?.avatar || '') : other?.avatar} name={title || '?'} size="md" className="rounded-[14px]" />
                       <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline mb-0.5">
                         <h4 className={`text-sm truncate font-bold ${isActive ? 'text-indigo-900' : 'text-slate-900'}`}>
-                          {other?.fullName || other?.username || 'User'}
+                          {title}
                         </h4>
                         <span className={`text-[10px] font-semibold whitespace-nowrap ml-2 ${isActive ? 'text-indigo-500' : 'text-slate-400'}`}>
                           {conv.lastMessageAt ? formatMessageTime(conv.lastMessageAt) : ''}
@@ -582,11 +639,11 @@ export default function ChatLayout() {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setShowRightSidebar(s => !s)}>
-                  {isPartnerPending ? (
-                    <div className="w-11 h-11 bg-slate-200 rounded-xl animate-pulse flex-shrink-0" />
-                  ) : (
+                    {isPartnerPending ? (
+                      <div className="w-11 h-11 bg-slate-200 rounded-xl animate-pulse flex-shrink-0" />
+                    ) : (
                     <div className="relative">
-                       <Avatar src={chatPartner.avatar} name={chatPartner.fullName || chatPartner.username || '?'} size="sm" className="w-11 h-11 rounded-xl shadow-sm border border-slate-200 flex-shrink-0 group-hover:border-indigo-300 transition-colors" />
+                       <Avatar src={isCommunityConversation ? communityHeaderAvatar : chatPartner.avatar} name={isCommunityConversation ? communityHeaderName : (chatPartner.fullName || chatPartner.username || '?')} size="sm" className="w-11 h-11 rounded-xl shadow-sm border border-slate-200 flex-shrink-0 group-hover:border-indigo-300 transition-colors" />
                        <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
                     </div>
                   )}
@@ -595,18 +652,29 @@ export default function ChatLayout() {
                       {isPartnerPending ? (
                         <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
                       ) : (
-                        <h2 className="text-slate-900 font-extrabold text-[15px] leading-tight group-hover:text-indigo-700 transition-colors">
-                          {chatPartner.fullName || chatPartner.username || 'Loading...'}
-                        </h2>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-slate-900 font-extrabold text-[15px] leading-tight group-hover:text-indigo-700 transition-colors">
+                            {isCommunityConversation ? communityHeaderName : (chatPartner.fullName || chatPartner.username || conversationTitle)}
+                          </h2>
+                          {isCommunityConversation ? (
+                            <TagPill className="bg-emerald-50 text-emerald-700 border-emerald-200">Community</TagPill>
+                          ) : isMentorConversation ? (
+                            <TagPill className="bg-amber-50 text-amber-700 border-amber-200">Mentor</TagPill>
+                          ) : (
+                            <TagPill className="bg-indigo-50 text-indigo-700 border-indigo-200">User</TagPill>
+                          )}
+                      </div>
                       )}
-                      {chatPartner.isMentor && !isPartnerPending && (
+                      {chatPartner.isMentor && !isPartnerPending && !isCommunityConversation && (
                         <span className="bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-md flex items-center gap-1 border border-amber-200">
                           <Star className="w-2.5 h-2.5 fill-amber-500" /> Mentor
                         </span>
                       )}
                     </div>
                     {!isPartnerPending && (
-                      <p className="text-xs text-slate-500 font-semibold mt-0.5 group-hover:text-slate-600">@{chatPartner.username}</p>
+                      <p className="text-xs text-slate-500 font-semibold mt-0.5 group-hover:text-slate-600">
+                        {isCommunityConversation ? `@${communityDoc?.slug || 'community'} · Community space` : `@${chatPartner.username}`}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -663,8 +731,14 @@ export default function ChatLayout() {
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <Avatar src={chatPartner.avatar} name={chatPartner.fullName || '?'} size="2xl" className="w-24 h-24 rounded-[2rem] shadow-xl border-4 border-white mb-6" />
-                    <h3 className="text-2xl font-black text-slate-900 mb-2">Say hello to {partnerFirstName}!</h3>
-                    <p className="text-slate-500 text-sm font-medium mb-5 max-w-sm">This is the very start of your conversation. Break the ice and start networking! 👋</p>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2">
+                      {isCommunityConversation ? 'Community conversation is empty' : `Say hello to ${partnerFirstName}!`}
+                    </h3>
+                    <p className="text-slate-500 text-sm font-medium mb-5 max-w-sm">
+                      {isCommunityConversation
+                        ? 'This space is ready for group collaboration and updates.'
+                        : 'This is the very start of your conversation. Break the ice and start networking! 👋'}
+                    </p>
                   </div>
                 ) : (
                   [...messages].reverse().map((msg, idx, arr) => {
@@ -704,7 +778,7 @@ export default function ChatLayout() {
                   <CheckCheck className="w-6 h-6 text-slate-400" />
                    <p className="text-slate-500 font-bold">This mentorship session has ended or is cancelled.</p>
                 </div>
-              ) : (
+                ) : (
               <div className="max-w-4xl mx-auto bg-white border border-slate-200/80 rounded-[20px] shadow-sm focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all overflow-hidden flex flex-col">
                 {pendingAttachment && (
                   <div className="px-4 pt-3 flex items-center gap-3">
@@ -731,7 +805,7 @@ export default function ChatLayout() {
                     value={content}
                     onChange={e => setContent(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder={`Message ${partnerFirstName}...`}
+                    placeholder={isCommunityConversation ? 'Message community...' : `Message ${partnerFirstName}...`}
                     rows={1}
                     className="w-full resize-none bg-transparent border-none focus:ring-0 py-2 px-3 text-[15px] text-slate-900 placeholder:text-slate-400 min-h-[44px] max-h-32 custom-scrollbar outline-none font-medium leading-relaxed"
                   />
@@ -798,8 +872,8 @@ export default function ChatLayout() {
                     <button onClick={() => setShowRightSidebar(false)} className="md:hidden absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 rounded-xl"><XIcon className="w-5 h-5" /></button>
                     <div className="relative z-10 mb-4">
                       <Avatar
-                        src={chatPartner.avatar}
-                        name={chatPartner.fullName || chatPartner.username || '?'}
+                        src={isCommunityConversation ? communityHeaderAvatar : chatPartner.avatar}
+                        name={isCommunityConversation ? communityHeaderName : (chatPartner.fullName || chatPartner.username || '?')}
                         size="2xl"
                         className="w-24 h-24 rounded-[2rem] shadow-xl shadow-indigo-500/10 border-4 border-white"
                       />
@@ -807,101 +881,125 @@ export default function ChatLayout() {
                     </div>
 
                     <h3 className="font-black text-lg text-slate-900 tracking-tight relative z-10 leading-tight">
-                      {chatPartner.fullName || 'User'}
+                      {isCommunityConversation ? communityHeaderName : (chatPartner.fullName || 'User')}
                     </h3>
                     <p className="text-sm font-semibold text-indigo-600 mb-2 relative z-10">
-                      @{chatPartner.username}
+                      {isCommunityConversation ? `@${communityDoc?.slug || activeConv?.communitySlug || 'community'}` : `@${chatPartner.username}`}
                     </p>
-                    {chatPartner.headline && (
-                      <p className="text-xs text-slate-500 font-medium mb-5 relative z-10 leading-relaxed max-w-[220px]">
-                        {chatPartner.headline}
-                      </p>
-                    )}
+                    <TagPill className={isCommunityConversation ? 'bg-emerald-50 text-emerald-700 border-emerald-200 mb-4' : isMentorConversation ? 'bg-amber-50 text-amber-700 border-amber-200 mb-4' : 'bg-indigo-50 text-indigo-700 border-indigo-200 mb-4'}>
+                      {conversationKindLabel}
+                    </TagPill>
+                    <p className="text-xs text-slate-500 font-medium mb-5 relative z-10 leading-relaxed max-w-[220px]">
+                      {isCommunityConversation && hasCommunityMeta ? conversationAbout : (!isCommunityConversation ? conversationAbout : "Community details are loading or unavailable.")}
+                    </p>
 
                     <div className="flex gap-2 w-full relative z-10">
-                      <Link
-                        to={`/profile/${chatPartner.userId}`}
-                        className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-md text-center"
-                      >
-                        View Profile
-                      </Link>
+                      {isCommunityConversation ? (
+                        <Link
+                          to={`/communities/${communityId}`}
+                          className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-md text-center"
+                        >
+                          Open Community
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/profile/${chatPartner.userId}`}
+                          className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-md text-center"
+                        >
+                          View Profile
+                        </Link>
+                      )}
                     </div>
                   </div>
 
                   <div className="p-5 space-y-6">
-                    {/* Professional Context */}
-                    <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
-                        <Briefcase className="w-3.5 h-3.5" /> Professional Context
-                      </h4>
-                      <div className="space-y-2.5">
-                        {(chatPartner.currentRole || chatPartner.currentCompany) && (
+                    {isCommunityConversation ? (
+                      <>
+                        <SectionCard title="Community About" icon={Info}>
                           <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
-                            <Briefcase className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                              {chatPartner.currentRole && <p className="text-xs font-bold text-slate-800 leading-tight">{chatPartner.currentRole}</p>}
-                              {chatPartner.currentCompany && <p className="text-[11px] text-slate-500 font-medium">{chatPartner.currentCompany}</p>}
+                            <MessageSquare className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                            <p className="text-xs font-bold text-slate-700">{communityDoc?.category || activeConv?.communityCategory || 'Community'}</p>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                            <Globe className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                            <p className="text-xs font-bold text-slate-700">{communityDoc?.visibility || activeConv?.communityVisibility || 'public'}</p>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                            <MessageSquare className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                            <p className="text-xs font-bold text-slate-700">{communityDoc?.memberCount ?? activeConv?.communityMemberCount ?? '0'} members</p>
+                          </div>
+                        </SectionCard>
+
+                        <SectionCard title="Community Links" icon={Link2}>
+                          <Link to={`/communities/${communityId}`} className="block p-3 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 transition-colors">
+                            <p className="text-xs font-bold text-indigo-700">Open community page</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">View feed, members and settings</p>
+                          </Link>
+                        </SectionCard>
+                      </>
+                    ) : (
+                      <>
+                        <SectionCard title={isMentorConversation ? 'Mentor About' : 'User About'} icon={isMentorConversation ? Star : Briefcase}>
+                          {(chatPartner.currentRole || chatPartner.currentCompany) && (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                              <Briefcase className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                              <div className="min-w-0">
+                                {chatPartner.currentRole && <p className="text-xs font-bold text-slate-800 leading-tight">{chatPartner.currentRole}</p>}
+                                {chatPartner.currentCompany && <p className="text-[11px] text-slate-500 font-medium">{chatPartner.currentCompany}</p>}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {chatPartner.location && (
-                          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
-                            <MapPin className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                            <p className="text-xs font-bold text-slate-700">{chatPartner.location}</p>
-                          </div>
-                        )}
-                        {chatPartner.branch && (
-                          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
-                            <GraduationCap className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                            <p className="text-xs font-bold text-slate-700">{chatPartner.branch}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          )}
+                          {chatPartner.location && (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                              <MapPin className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                              <p className="text-xs font-bold text-slate-700">{chatPartner.location}</p>
+                            </div>
+                          )}
+                          {chatPartner.branch && (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                              <GraduationCap className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                              <p className="text-xs font-bold text-slate-700">{chatPartner.branch}</p>
+                            </div>
+                          )}
+                        </SectionCard>
 
-                    {/* Social Links */}
-                    {(chatPartner.socialLinks?.linkedin || chatPartner.socialLinks?.github || chatPartner.socialLinks?.portfolio) && (
-                      <div>
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
-                          <Globe className="w-3.5 h-3.5" /> Social Links
-                        </h4>
-                        <div className="flex gap-2">
-                          {chatPartner.socialLinks?.linkedin && (
-                            <a href={chatPartner.socialLinks.linkedin} target="_blank" rel="noreferrer" className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm">
-                              <Link2 className="w-4 h-4 text-blue-600" />
-                            </a>
+                        {(chatPartner.socialLinks?.linkedin || chatPartner.socialLinks?.github || chatPartner.socialLinks?.portfolio) && (
+                          <SectionCard title="Social Links" icon={Globe}>
+                            <div className="flex gap-2">
+                              {chatPartner.socialLinks?.linkedin && (
+                                <a href={chatPartner.socialLinks.linkedin} target="_blank" rel="noreferrer" className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm">
+                                  <Link2 className="w-4 h-4 text-blue-600" />
+                                </a>
+                              )}
+                              {chatPartner.socialLinks?.github && (
+                                <a href={chatPartner.socialLinks.github} target="_blank" rel="noreferrer" className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-100 hover:border-slate-300 transition-all shadow-sm">
+                                  <Globe className="w-4 h-4 text-slate-800" />
+                                </a>
+                              )}
+                              {chatPartner.socialLinks?.portfolio && (
+                                <a href={chatPartner.socialLinks.portfolio} target="_blank" rel="noreferrer" className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm">
+                                  <ExternalLink className="w-4 h-4 text-emerald-600" />
+                                </a>
+                              )}
+                            </div>
+                          </SectionCard>
+                        )}
+
+                        <SectionCard title="Skills & Expertise" icon={Info}>
+                          {chatPartner.skills?.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {chatPartner.skills.map((s, idx) => (
+                                <span key={idx} className="px-2.5 py-1 bg-white border border-slate-200 shadow-sm text-slate-700 rounded-lg text-[11px] font-bold hover:border-indigo-300 hover:bg-indigo-50 transition-colors cursor-default">
+                                  {s.skillName || s.name || s}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 font-medium italic px-1 bg-slate-50 p-3 rounded-xl border border-slate-100">No skills listed yet.</p>
                           )}
-                          {chatPartner.socialLinks?.github && (
-                            <a href={chatPartner.socialLinks.github} target="_blank" rel="noreferrer" className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-100 hover:border-slate-300 transition-all shadow-sm">
-                              <Globe className="w-4 h-4 text-slate-800" />
-                            </a>
-                          )}
-                          {chatPartner.socialLinks?.portfolio && (
-                            <a href={chatPartner.socialLinks.portfolio} target="_blank" rel="noreferrer" className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm">
-                              <ExternalLink className="w-4 h-4 text-emerald-600" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
+                        </SectionCard>
+                      </>
                     )}
-
-                    {/* Skills */}
-                    <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
-                        <Info className="w-3.5 h-3.5" /> Skills & Expertise
-                      </h4>
-                      {chatPartner.skills?.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {chatPartner.skills.map((s, idx) => (
-                            <span key={idx} className="px-2.5 py-1 bg-white border border-slate-200 shadow-sm text-slate-700 rounded-lg text-[11px] font-bold hover:border-indigo-300 hover:bg-indigo-50 transition-colors cursor-default">
-                              {s.skillName || s.name || s}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 font-medium italic px-1 bg-slate-50 p-3 rounded-xl border border-slate-100">No skills listed yet.</p>
-                      )}
-                    </div>
 
                   </div>
                 </>

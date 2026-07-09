@@ -7,7 +7,7 @@ export default function MentorCard({ mentor }) {
   const { bio, domains, rating, reviewCount, totalSessions, verificationStatus, yearsExperience } = mentorProfile;
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+    <div className="bg-white/90 backdrop-blur-xl rounded-[1.75rem] p-6 border border-white/70 shadow-[0_16px_60px_rgba(15,23,42,0.06)] hover:shadow-[0_24px_80px_rgba(15,23,42,0.12)] hover:-translate-y-1 transition-all group">
       <div className="flex flex-col sm:flex-row gap-6 items-start">
         <div className="relative">
           <Avatar src={avatar} alt={fullName} size="xl" className="ring-4 ring-slate-50" />
@@ -27,6 +27,16 @@ export default function MentorCard({ mentor }) {
               <div className="flex items-center gap-2 mt-1 text-slate-600 text-sm">
                 <Briefcase className="w-4 h-4" />
                 <span className="truncate">{currentRole} {currentCompany ? `at ${currentCompany}` : ''}</span>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  Mentor
+                </span>
+                {verificationStatus === 'verified' && (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Verified
+                  </span>
+                )}
               </div>
             </div>
             

@@ -48,7 +48,9 @@ const NOTIFICATION_EVENTS = Object.freeze({
   // NEW — Feed module (Phase 1)
   FEED_MENTIONED: "feed.post.mentioned",
   FEED_COMMENT_RECEIVED: "feed.comment.received",
-  FEED_POST_LIKED: "feed.post.liked"
+  FEED_POST_LIKED: "feed.post.liked",
+  FEED_CONTENT_REPORTED: "feed.content.reported",
+  FEED_REPORT_RESOLVED: "feed.report.resolved"
 });
 
 const NOTIFICATION_EVENT_VALUES = Object.freeze(Object.values(NOTIFICATION_EVENTS));
@@ -401,6 +403,22 @@ const EVENT_METADATA = Object.freeze({
     actionType: ACTION_TYPE.OPEN_FEED_POST,
     titleTemplate: "Your post got a like",
     bodyTemplate: "{{likerName}} liked your post."
+  },
+  [NOTIFICATION_EVENTS.FEED_CONTENT_REPORTED]: {
+    category: NOTIFICATION_CATEGORY.FEED,
+    type: NOTIFICATION_TYPE.WARNING,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    actionType: ACTION_TYPE.OPEN_FEED_POST,
+    titleTemplate: "Feed content reported",
+    bodyTemplate: "{{reporterName}} reported a {{targetType}}."
+  },
+  [NOTIFICATION_EVENTS.FEED_REPORT_RESOLVED]: {
+    category: NOTIFICATION_CATEGORY.FEED,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_FEED_POST,
+    titleTemplate: "Feed report resolved",
+    bodyTemplate: "A feed report was marked {{status}}."
   }
 });
 

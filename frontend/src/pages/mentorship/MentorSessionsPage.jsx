@@ -62,15 +62,18 @@ export default function MentorSessionsPage() {
   const sessions = data?.sessions || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,91,255,0.10),_transparent_42%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Mentorship Sessions</h1>
-          <p className="text-slate-500 mt-2">Manage your scheduled, live, and completed sessions.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-indigo-100 text-indigo-700 text-xs font-black uppercase tracking-[0.18em] shadow-sm mb-4">
+            Session Hub
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mentorship Sessions</h1>
+          <p className="text-slate-600 mt-2 max-w-2xl">Manage your scheduled, live, and completed sessions from one focused, professional workspace.</p>
         </div>
 
         {sessions.length === 0 ? (
-          <div className="bg-white rounded-3xl p-16 text-center border border-slate-100">
+          <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] p-16 text-center border border-white/70 shadow-[0_16px_60px_rgba(15,23,42,0.06)]">
             <Video className="w-12 h-12 text-slate-300 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-slate-900">No sessions found</h3>
             <p className="text-slate-500 mt-2">You don't have any sessions scheduled yet.</p>
@@ -78,14 +81,15 @@ export default function MentorSessionsPage() {
         ) : (
           <div className="grid gap-6">
             {sessions.map(session => {
-              const isMentor = session.mentorId?._id === user?._id;
+              const isMentor = session.mentorId?._id === user?._id || session.mentorId?.profileId?.userId === user?._id;
               const otherUser = isMentor ? session.studentId : session.mentorId;
               const profile = otherUser?.profileId || {};
               const fullName = profile.fullName || "Unknown";
               const avatar = profile.avatar || "";
+              const phaseLabel = session.phase === 'live' ? 'Live now' : session.phase === 'upcoming' ? 'Upcoming' : session.phase === 'ended' ? 'Ended' : session.phase || session.status;
 
               return (
-                <div key={session._id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row gap-6">
+                <div key={session._id} className="bg-white/90 backdrop-blur-xl rounded-[1.75rem] p-6 border border-white/70 shadow-[0_16px_60px_rgba(15,23,42,0.06)] flex flex-col md:flex-row gap-6">
                   <div className="shrink-0 flex flex-col items-center gap-2">
                     <Avatar src={avatar} alt={fullName} size="lg" />
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isMentor ? 'Mentee' : 'Mentor'}</span>
@@ -105,7 +109,7 @@ export default function MentorSessionsPage() {
                         session.status === 'live' ? 'text-green-600 bg-green-50 animate-pulse' :
                         session.status === 'completed' ? 'text-slate-600 bg-slate-100' : 'text-red-600 bg-red-50'
                       }`}>
-                        {session.status}
+                        {phaseLabel}
                       </div>
                     </div>
 

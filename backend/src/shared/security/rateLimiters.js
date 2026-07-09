@@ -96,6 +96,14 @@ const feedActionLimiter = createLimiter(
   "Too many feed actions. Try again in 1 hour."
 );
 
+// Feed read/moderation-adjacent actions aren't as expensive as writes,
+// but they are easy spam surfaces if left completely open.
+const feedInteractionLimiter = createLimiter(
+  60,
+  60,
+  "Too many feed interactions. Try again in 1 hour."
+);
+
 module.exports = {
   loginLimiter,
   registerLimiter,
@@ -106,5 +114,6 @@ module.exports = {
   connectionRequestLimiter,
   messageLimiter,
   communityActionLimiter,
-  feedActionLimiter // NEW
+  feedActionLimiter,
+  feedInteractionLimiter
 };

@@ -4,38 +4,10 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import {
   Eye, EyeOff, LogIn, Zap, CheckCircle,
-  Briefcase, Users, BookOpen, Star, Shield
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { loginUser } from "../../api/auth.api";
 import { useAuth } from "../../hooks/useAuth";
-
-const FEATURES = [
-  {
-    icon: Briefcase,
-    title: "Career Ecosystem",
-    desc: "Explore internships, placements & opportunities curated for BCET.",
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-    border: "border-blue-100",
-  },
-  {
-    icon: BookOpen,
-    title: "Mentorship",
-    desc: "Connect one-on-one with faculty & senior alumni mentors.",
-    color: "text-indigo-500",
-    bg: "bg-indigo-50",
-    border: "border-indigo-100",
-  },
-  {
-    icon: Users,
-    title: "Networking",
-    desc: "Build meaningful connections across all batches and departments.",
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-    border: "border-purple-100",
-  },
-];
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -87,19 +59,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-stretch bg-slate-50">
+    <div className="min-h-screen flex items-stretch bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.08),_transparent_26%),linear-gradient(180deg,_#f8fbfd_0%,_#eef4fb_100%)]">
       
       {/* ── Left Hero Panel (md+) ── */}
-      <div className="hidden md:flex flex-col justify-between w-[45%] lg:w-[40%] bg-slate-900 text-white p-10 xl:p-14 relative overflow-hidden">
+      <div className="hidden md:flex flex-col justify-between w-[45%] lg:w-[40%] bg-[#0f1c2d] text-white p-10 xl:p-14 relative overflow-hidden">
         {/* Subtle background patterns */}
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary-600 rounded-full blur-[100px] opacity-30 pointer-events-none" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-teal-500 rounded-full blur-[100px] opacity-20 pointer-events-none" />
         
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-16">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm">
-              <Zap className="w-5 h-5 text-primary-400" />
+              <Zap className="w-5 h-5 text-teal-300" />
             </div>
             <span className="font-display text-xl font-bold tracking-tight">BCET Connect</span>
           </div>
@@ -107,7 +79,7 @@ export default function LoginPage() {
           <div className="space-y-6 max-w-sm">
             <h2 className="font-display text-4xl xl:text-5xl font-bold leading-tight">
               Empowering your <br />
-              <span className="text-primary-400">Career Journey</span>
+              <span className="text-teal-300">Career Journey</span>
             </h2>
             <p className="text-slate-300 text-base leading-relaxed">
               The premier professional network for BCET students, faculty, and alumni.
@@ -130,18 +102,18 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right Form Panel ── */}
-      <div className="flex-1 flex flex-col justify-center items-center p-6 md:p-10 xl:p-14 relative z-10 bg-slate-50">
+      <div className="flex-1 flex flex-col justify-center items-center p-6 md:p-10 xl:p-14 relative z-10">
         
         {/* Logo – mobile only */}
         <div className="md:hidden text-center mb-8 flex flex-col items-center">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-100 border border-primary-200 mb-3">
-            <Zap className="w-6 h-6 text-primary-600" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 mb-3">
+            <Zap className="w-6 h-6 text-teal-700" />
           </div>
           <h1 className="font-display text-2xl font-bold text-slate-900 tracking-tight">BCET Connect</h1>
         </div>
 
         <div className="w-full max-w-[420px] animate-slide-up">
-          <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-sm border border-slate-200">
+          <div className="page-shell p-8 sm:p-10">
             {/* Header */}
             <div className="mb-8 text-center sm:text-left">
               <h2 className="font-display text-2xl font-bold text-slate-900">Welcome back</h2>

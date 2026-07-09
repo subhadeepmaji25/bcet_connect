@@ -57,9 +57,7 @@ export default function BecomeMentorPage() {
   });
 
   const onSubmit = (data) => {
-    // Structure payload properly
     const payload = {
-      mentorRole: user?.role === 'alumni' || user?.role === 'faculty' ? user.role : 'alumni', // Fallback or strict match
       ...data,
       yearsExperience: Number(data.yearsExperience)
     };
@@ -67,17 +65,22 @@ export default function BecomeMentorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,91,255,0.10),_transparent_42%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-slate-900">Become a Mentor</h1>
-          <p className="mt-3 text-slate-500">Share your expertise and guide the next generation.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-indigo-100 text-indigo-700 text-xs font-black uppercase tracking-[0.18em] shadow-sm mb-4">
+            Mentor Profile
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Become a Mentor</h1>
+          <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
+            Shape careers, guide decisions, and turn your experience into structured support for students and alumni.
+          </p>
         </div>
 
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8"
+          className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_20px_80px_rgba(15,23,42,0.08)] border border-white/70 p-8"
         >
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <div className="space-y-6">
@@ -212,7 +215,7 @@ export default function BecomeMentorPage() {
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="w-full flex items-center justify-center gap-2 bg-[#635BFF] hover:bg-[#5249ea] text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-lg shadow-primary-500/30 disabled:opacity-70"
+                className="w-full flex items-center justify-center gap-2 bg-[#635BFF] hover:bg-[#5249ea] text-white py-4 rounded-2xl font-black text-lg transition-all shadow-lg shadow-primary-500/30 disabled:opacity-70"
               >
                 {mutation.isPending ? 'Submitting...' : 'Apply to be a Mentor'}
                 <CheckCircle2 className="w-5 h-5" />

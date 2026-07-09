@@ -5,7 +5,7 @@ const asyncHandler = require("../../../shared/utils/asyncHandler");
 const logger = require("../../../shared/logger/logger");
 
 const createCommentController = asyncHandler(async (req, res) => {
-  const result = await feedCommentService.createComment(req.user.id, req.params.postId, req.body);
+  const result = await feedCommentService.createComment(req.user.id, req.user.role, req.params.postId, req.body);
   logger.info("Feed comment created", { module: "Feed", userId: req.user.id, postId: req.params.postId });
   return sendResponse(res, { statusCode: 201, ...result });
 });
@@ -16,12 +16,12 @@ const editCommentController = asyncHandler(async (req, res) => {
 });
 
 const deleteCommentController = asyncHandler(async (req, res) => {
-  const result = await feedCommentService.deleteComment(req.user.id, req.params.commentId);
+  const result = await feedCommentService.deleteComment(req.user.id, req.user.role, req.params.commentId);
   return sendResponse(res, result);
 });
 
 const getCommentsController = asyncHandler(async (req, res) => {
-  const result = await feedCommentService.getComments(req.params.postId, req.query);
+  const result = await feedCommentService.getComments(req.user.id, req.user.role, req.params.postId, req.query);
   return sendResponse(res, {
     success: true,
     message: "Comments fetched successfully",
@@ -31,10 +31,20 @@ const getCommentsController = asyncHandler(async (req, res) => {
 });
 
 const getRepliesController = asyncHandler(async (req, res) => {
-  const replies = await feedCommentService.getReplies(req.params.commentId);
+  const replies = await feedCommentService.getReplies(req.user.id, req.user.role, req.params.commentId);
   return sendResponse(res, { success: true, message: "Replies fetched successfully", data: { replies } });
 });
 
+const moderateCommentController = asyncHandler(async (req, res) => {
+  const result = await feedCommentService.moderateComment(req.user.id, req.user.role, req.params.commentId, req.body);
+  return sendResponse(res, result);
+});
+
 module.exports = {
-  createCommentController, editCommentController, deleteCommentController, getCommentsController, getRepliesController
+  createCommentController,
+  editCommentController,
+  deleteCommentController,
+  getCommentsController,
+  getRepliesController,
+  moderateCommentController
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -239,7 +239,7 @@ export default function JobListPage() {
   const applyMutation = useMutation({
     mutationFn: ({ jobId, resumeId, coverLetter }) => applyForJob(jobId, { resumeId, coverLetter }),
     onSuccess: () => {
-      toast.success("Application submitted! 🎉", { style: { background: '#111827', color: '#fff', borderRadius: '12px' }});
+      toast.success("Application submitted!", { style: { background: '#111827', color: '#fff', borderRadius: '12px' }});
       queryClient.invalidateQueries({ queryKey: ["my-applications"] });
     },
     onError: (err) => {

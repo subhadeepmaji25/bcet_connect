@@ -83,6 +83,7 @@ const getMyConversations = async (userId, { page = 1, limit = 20, type, status, 
       .skip(skip)
       .limit(Number(limit))
       .populate("participants", "username email role")
+      .populate("communityId", "name slug avatar")
       .lean(),
     Conversation.countDocuments(filter)
   ]);
@@ -95,7 +96,7 @@ const getConversationById = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId).populate(
     "participants",
     "username email role"
-  );
+  ).populate("communityId", "name slug avatar");
   if (!conversation) throw ApiError.notFound("Conversation not found");
 
   if (conversation.type === "community") {

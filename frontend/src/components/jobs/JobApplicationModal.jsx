@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Zap, Info } from "lucide-react";
+import { Zap, Info, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { getResumes } from "../../api/users.api";
 
@@ -35,7 +35,9 @@ export default function JobApplicationModal({ isOpen, onClose, job, onConfirm })
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between flex-shrink-0">
           <h3 className="text-lg font-bold text-slate-900">Apply to {job?.company}</h3>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-200 rounded-xl transition-colors">✕</button>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-200 rounded-xl transition-colors" aria-label="Close modal">
+            <X className="w-4 h-4" />
+          </button>
         </div>
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
           <h4 className="font-semibold text-slate-800 mb-2">{job?.title}</h4>

@@ -213,6 +213,7 @@ export default function NotificationsPage() {
                 <Bell className="w-6 h-6 text-white" />
               </div>
               <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-600 mb-1">Inbox</p>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
                   Notifications
                 </h1>
@@ -226,11 +227,11 @@ export default function NotificationsPage() {
 
             {/* Bulk Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => refetch()}
-                disabled={isFetching}
-                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-sm transition-colors"
-              >
+                <button
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 shadow-sm transition-colors"
+                >
                 <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
               </button>
               <button
@@ -348,7 +349,7 @@ export default function NotificationsPage() {
         {/* Pagination note */}
         {notifications.length >= 30 && (
           <p className="text-center text-xs text-slate-400 font-medium mt-4">
-            Showing latest 30 — older notifications auto-expire after 60–180 days
+            Showing latest 30 - older notifications auto-expire after 60-180 days
           </p>
         )}
 

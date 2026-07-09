@@ -27,6 +27,11 @@ const commentsQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(30).optional()
 });
 
+const moderateCommentSchema = Joi.object({
+  action: Joi.string().valid("hide", "restore").required(),
+  note: Joi.string().trim().max(LIMITS.REPORT_NOTE_MAX).allow("").optional()
+});
+
 const validateCreateComment = (req, res, next) => {
   const { error, value } = createCommentSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
   if (error) return next(ApiError.badRequest(error.details.map((d) => d.message).join(", ")));
@@ -60,6 +65,18 @@ const validateCommentsQuery = (req, res, next) => {
   next();
 };
 
+const validateModerateComment = (req, res, next) => {
+  const { error, value } = moderateCommentSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+  if (error) return next(ApiError.badRequest(error.details.map((d) => d.message).join(", ")));
+  req.body = value;
+  next();
+};
+
 module.exports = {
-  validateCreateComment, validateEditComment, validatePostIdParam, validateCommentIdParam, validateCommentsQuery
+  validateCreateComment,
+  validateEditComment,
+  validatePostIdParam,
+  validateCommentIdParam,
+  validateCommentsQuery,
+  validateModerateComment
 };

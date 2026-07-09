@@ -11,7 +11,8 @@ const mongoose = require("mongoose");
 const {
   POST_TYPE_VALUES,
   VISIBILITY, VISIBILITY_VALUES,
-  POST_STATUS, POST_STATUS_VALUES
+  POST_STATUS, POST_STATUS_VALUES,
+  MODERATION_STATUS, MODERATION_STATUS_VALUES
 } = require("../constants/feed.constants");
 
 // Mirrors what Communication/Communities attachment.service.js already
@@ -37,14 +38,25 @@ const feedPostSchema = new mongoose.Schema({
   mentions: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
 
   visibility: { type: String, enum: VISIBILITY_VALUES, default: VISIBILITY.PUBLIC },
+  moderationStatus: { type: String, enum: MODERATION_STATUS_VALUES, default: MODERATION_STATUS.APPROVED, index: true },
+  moderationReasons: { type: [String], default: [] },
 
   likeCount: { type: Number, default: 0, min: 0 },
   likedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
   commentCount: { type: Number, default: 0, min: 0 },
+  reportCount: { type: Number, default: 0, min: 0 },
+
+  // NEW — was missing while feedView.service.js already had
+  // FeedPost.updateOne({...}, { $inc: { viewCount: 1 } }) written against
+  // it. Mongoose strict mode silently drops $inc on an undeclared path,
+  // so that write was a silent no-op until this field existed.
+  viewCount: { type: Number, default: 0, min: 0 },
 
   // Reserved for faculty/admin announcements — not wired to any
   // permission check in Phase 1, exists so no migration is needed later.
   isPinned: { type: Boolean, default: false },
+  pinnedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  pinnedAt: { type: Date, default: null },
 
   isEdited: { type: Boolean, default: false },
   editedAt: { type: Date, default: null },
@@ -56,6 +68,7 @@ const feedPostSchema = new mongoose.Schema({
 feedPostSchema.index({ authorId: 1, createdAt: -1 });
 // Main feed scroll — cursor pagination on _id, never skip().
 feedPostSchema.index({ status: 1, createdAt: -1 });
+feedPostSchema.index({ status: 1, isPinned: -1, createdAt: -1 });
 // #hashtag / Search module lookups.
 feedPostSchema.index({ tags: 1 });
 

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/core/server.js",
     "dev": "nodemon src/core/server.js",
-    "test": "echo \"No tests configured yet\"",
+    "test": "node --test \"src/**/*.test.js\"",
     "health": "node src/core/server.js",
     "clean": "npm cache clean --force"
   },

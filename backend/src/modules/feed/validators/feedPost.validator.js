@@ -1,7 +1,15 @@
 // backend/src/modules/feed/validators/feedPost.validator.js
+//
+// PHASE 3 UPDATE: added validateReactionType for the new /react route
+// (feedReaction.controller.js). Everything else below is UNCHANGED —
+// createPost/editPost/postIdParam/feedQuery validation stays exactly
+// as it was.
 const Joi = require("joi");
 const ApiError = require("../../../shared/errors/ApiError");
-const { POST_TYPE_VALUES, VISIBILITY_VALUES, LIMITS } = require("../constants/feed.constants");
+const {
+  POST_TYPE_VALUES, VISIBILITY_VALUES, LIMITS,
+  REACTION_TYPE_VALUES // NEW
+} = require("../constants/feed.constants");
 
 const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 
@@ -49,6 +57,22 @@ const feedQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(30).optional()
 });
 
+// NEW — validates the body of POST /posts/:postId/react. postId itself
+// is validated separately by validatePostIdParam on the same route,
+// same two-schemas-per-route pattern already used for comments.
+const reactionTypeSchema = Joi.object({
+  type: Joi.string().valid(...REACTION_TYPE_VALUES).required()
+});
+
+const pinPostSchema = Joi.object({
+  pinned: Joi.boolean().default(true)
+});
+
+const moderatePostSchema = Joi.object({
+  action: Joi.string().valid("hide", "restore").required(),
+  note: Joi.string().trim().max(LIMITS.REPORT_NOTE_MAX).allow("").optional()
+});
+
 const validateCreatePost = (req, res, next) => {
   const { error, value } = createPostSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
   if (error) return next(ApiError.badRequest(error.details.map((d) => d.message).join(", ")));
@@ -76,4 +100,31 @@ const validateFeedQuery = (req, res, next) => {
   next();
 };
 
-module.exports = { validateCreatePost, validateEditPost, validatePostIdParam, validateFeedQuery };
+// NEW
+const validateReactionType = (req, res, next) => {
+  const { error, value } = reactionTypeSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+  if (error) return next(ApiError.badRequest(error.details.map((d) => d.message).join(", ")));
+  req.body = value;
+  next();
+};
+
+const validatePinPost = (req, res, next) => {
+  const { error, value } = pinPostSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+  if (error) return next(ApiError.badRequest(error.details.map((d) => d.message).join(", ")));
+  req.body = value;
+  next();
+};
+
+const validateModeratePost = (req, res, next) => {
+  const { error, value } = moderatePostSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+  if (error) return next(ApiError.badRequest(error.details.map((d) => d.message).join(", ")));
+  req.body = value;
+  next();
+};
+
+module.exports = {
+  validateCreatePost, validateEditPost, validatePostIdParam, validateFeedQuery,
+  validateReactionType,
+  validatePinPost,
+  validateModeratePost
+};

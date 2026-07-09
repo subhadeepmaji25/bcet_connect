@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import {
   Eye, EyeOff, UserPlus, Zap, GraduationCap, BookOpen, Users,
-  CheckCircle2, User, Mail, KeyRound, BadgeCheck,
+  CheckCircle2, User, KeyRound, BadgeCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { registerUser } from "../../api/auth.api";
@@ -176,12 +176,12 @@ export default function RegisterPage() {
   }, [currentRole, fullName, username, email, passwordValue]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 py-12 relative bg-slate-50">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 py-12 relative bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.08),_transparent_26%),linear-gradient(180deg,_#f8fbfd_0%,_#eef4fb_100%)]">
       
       {/* Brand Header */}
       <div className="text-center mb-8 relative z-10">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary-100 border border-primary-200 mb-4">
-          <Zap className="w-6 h-6 text-primary-600" />
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 mb-4">
+          <Zap className="w-6 h-6 text-teal-700" />
         </div>
         <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Join BCET Connect</h1>
         <p className="text-slate-500 text-sm mt-1.5 font-medium">Create your account to get started</p>
@@ -192,14 +192,14 @@ export default function RegisterPage() {
         <StepIndicator currentStep={currentStep} />
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 sm:p-10">
+        <div className="page-shell p-8 sm:p-10">
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
 
             {/* ── Role Selection ── */}
             <div>
               <label className="label">I am a...</label>
               <div className="grid grid-cols-3 gap-3">
-                {ROLES.map(({ value, label, description, icon: Icon, color, bg, activeBorder, activeBg }) => (
+                {ROLES.map(({ value, label, icon: Icon, color, bg, activeBorder, activeBg }) => (
                   <button
                     key={value}
                     type="button"

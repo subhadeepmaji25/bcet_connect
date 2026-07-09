@@ -4,13 +4,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Menu, Bell, ChevronDown, User, LogOut, Search, Settings,
-  Check, Archive, Trash2, BriefcaseIcon, Users, MessageCircle,
-  GraduationCap, Shield, FileText, Sparkles
+  Menu, Bell, ChevronDown, User, LogOut, Search,
+  BriefcaseIcon, Users, MessageCircle,
+  GraduationCap, Shield, FileText
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../constants/appConstants';
-import { getUnreadCount, getNotifications, markAsRead, markAllAsRead, archiveNotification } from '../../api/notification.api';
+import { getUnreadCount, getNotifications, markAsRead, markAllAsRead } from '../../api/notification.api';
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS = {
@@ -191,8 +191,6 @@ export default function Navbar({ onMenuToggle }) {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const notifRef = useRef(null);
-  const qc = useQueryClient();
-
   // Real unread count from backend
   const { data: countData } = useQuery({
     queryKey: ['notification-count'],
@@ -227,7 +225,8 @@ export default function Navbar({ onMenuToggle }) {
   };
 
   return (
-    <header className="h-16 flex-shrink-0 z-30 bg-white border-b border-slate-200 flex items-center px-4 gap-4 w-full relative shadow-sm">
+    <header className="h-20 flex-shrink-0 z-30 bg-transparent flex items-center px-3 md:px-5 pt-3 w-full relative">
+      <div className="w-full h-full rounded-[24px] border border-slate-200/80 bg-white/88 backdrop-blur-xl shadow-[0_10px_34px_rgba(15,23,42,0.05)] flex items-center px-4 gap-4">
       {/* Mobile menu toggle */}
       <button
         onClick={onMenuToggle}
@@ -246,7 +245,7 @@ export default function Navbar({ onMenuToggle }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search jobs, mentors, or connections..."
-            className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-600/15 focus:border-teal-600/30 transition-all"
           />
         </form>
       </div>
@@ -358,6 +357,7 @@ export default function Navbar({ onMenuToggle }) {
             )}
           </AnimatePresence>
         </div>
+      </div>
       </div>
     </header>
   );

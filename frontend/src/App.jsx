@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -62,10 +62,16 @@ const NotFoundPage          = lazy(() => import('./pages/NotFoundPage'));
 
 // ─── Suspense Loader ──────────────────────────────────────────────────────────
 const PageLoader = () => (
-  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-    <div className="relative w-12 h-12">
-      <div className="absolute inset-0 rounded-full border-4 border-primary-500/20" />
-      <div className="absolute inset-0 rounded-full border-4 border-t-primary-500 animate-spin" />
+  <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.12),_transparent_22%),linear-gradient(180deg,_#f8fbfd_0%,_#eef4fb_100%)] flex items-center justify-center">
+    <div className="page-shell px-8 py-7 flex items-center gap-4">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-4 border-teal-700/10" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-teal-700 border-r-sky-600 animate-spin" />
+      </div>
+      <div>
+        <p className="text-sm font-black tracking-[0.16em] uppercase text-teal-700">BCET Connect</p>
+        <p className="text-sm font-medium text-slate-500">Loading workspace...</p>
+      </div>
     </div>
   </div>
 );

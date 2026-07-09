@@ -43,6 +43,14 @@ export default function SearchUserCard({ user }) {
     }
   };
 
+  const getIdentityLabel = () => {
+    if (isMentor) return 'Mentor';
+    if (role === 'faculty') return 'Faculty';
+    if (role === 'admin') return 'Admin';
+    if (role === 'alumni') return 'Alumni';
+    return 'Student';
+  };
+
   const renderConnectionButton = () => {
     if (connectionStatus === 'connected') {
       return (
@@ -99,13 +107,23 @@ export default function SearchUserCard({ user }) {
           )}
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <Link to={`/profile/${userId}`} className="text-base font-black text-slate-900 hover:text-indigo-600 truncate transition-colors">
               {fullName || username}
             </Link>
             {role && (
               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${getRoleBadgeColor(role)}`}>
                 {ROLE_LABELS?.[role] || role}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] border ${isMentor ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+              {getIdentityLabel()}
+            </span>
+            {connectionStatus === 'connected' && (
+              <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] border bg-emerald-50 text-emerald-700 border-emerald-200">
+                Connected
               </span>
             )}
           </div>
