@@ -4,8 +4,8 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, Plus, MapPin, Clock, Star, Building2,
-  Search, Filter, ChevronDown, Zap, ExternalLink,
-  Users, RefreshCw, CheckCircle2, TrendingUp, DollarSign
+  Search, Filter, Zap, ExternalLink,
+  Users, CheckCircle2, TrendingUp, DollarSign
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { getApprovedJobs, applyForJob } from "../../api/jobs.api";
@@ -223,8 +223,7 @@ export default function JobListPage() {
   const [page, setPage] = useState(1);
   const [applyModalJob, setApplyModalJob] = useState(null);
 
-  // Reset page to 1 when filters or search change
-  useEffect(() => { setPage(1); }, [debouncedSearch, filters]);
+  // Page reset is now handled in event handlers
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["jobs", filters, debouncedSearch, page],
@@ -293,7 +292,7 @@ export default function JobListPage() {
                 type="text"
                 placeholder="Job title, keywords, or company..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full bg-transparent border-none focus:ring-0 pl-12 pr-4 py-3 text-slate-900 font-medium placeholder:text-slate-400 outline-none"
               />
             </div>
@@ -363,7 +362,7 @@ export default function JobListPage() {
                   <div>
                     <h3 className="font-semibold text-slate-900 mb-3 flex items-center justify-between">
                       Filters
-                      <button onClick={() => setFilters({ category: "", employmentType: "", isRemote: "" })} className="text-xs text-[#635BFF] font-medium hover:underline">
+                      <button onClick={() => { setFilters({ category: "", employmentType: "", isRemote: "" }); setPage(1); }} className="text-xs text-[#635BFF] font-medium hover:underline">
                         Reset All
                       </button>
                     </h3>
@@ -374,12 +373,12 @@ export default function JobListPage() {
                       <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Job Type</label>
                       <div className="space-y-2">
                         <label className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer group">
-                          <input type="radio" name="empType_mob" value="" checked={filters.employmentType === ""} onChange={() => setFilters(f => ({...f, employmentType: ""}))} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                          <input type="radio" name="empType_mob" value="" checked={filters.employmentType === ""} onChange={() => { setFilters(f => ({...f, employmentType: ""})); setPage(1); }} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                           <span className="group-hover:text-slate-900">Any Type</span>
                         </label>
                         {JOB_EMPLOYMENT_TYPES.map(t => (
                           <label key={t} className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer group">
-                            <input type="radio" name="empType_mob" value={t} checked={filters.employmentType === t} onChange={() => setFilters(f => ({...f, employmentType: t}))} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                            <input type="radio" name="empType_mob" value={t} checked={filters.employmentType === t} onChange={() => { setFilters(f => ({...f, employmentType: t})); setPage(1); }} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                             <span className="group-hover:text-slate-900">{EMPLOYMENT_TYPE_LABELS[t] || t}</span>
                           </label>
                         ))}
@@ -390,7 +389,7 @@ export default function JobListPage() {
                       <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Category</label>
                       <select 
                         value={filters.category} 
-                        onChange={(e) => setFilters(f => ({...f, category: e.target.value}))}
+                        onChange={(e) => { setFilters(f => ({...f, category: e.target.value})); setPage(1); }}
                         className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF] outline-none"
                       >
                         <option value="">All Categories</option>
@@ -401,7 +400,7 @@ export default function JobListPage() {
                     <div>
                       <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Location</label>
                       <label className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                        <input type="checkbox" checked={filters.isRemote === "true"} onChange={(e) => setFilters(f => ({...f, isRemote: e.target.checked ? "true" : ""}))} className="w-4 h-4 rounded text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                        <input type="checkbox" checked={filters.isRemote === "true"} onChange={(e) => { setFilters(f => ({...f, isRemote: e.target.checked ? "true" : ""})); setPage(1); }} className="w-4 h-4 rounded text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                         <span>Remote Only</span>
                       </label>
                     </div>
@@ -430,12 +429,12 @@ export default function JobListPage() {
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Job Type</label>
                   <div className="space-y-2">
                     <label className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer group">
-                      <input type="radio" name="empType" value="" checked={filters.employmentType === ""} onChange={() => setFilters(f => ({...f, employmentType: ""}))} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                      <input type="radio" name="empType" value="" checked={filters.employmentType === ""} onChange={() => { setFilters(f => ({...f, employmentType: ""})); setPage(1); }} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                       <span className="group-hover:text-slate-900">Any Type</span>
                     </label>
                     {JOB_EMPLOYMENT_TYPES.map(t => (
                       <label key={t} className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer group">
-                        <input type="radio" name="empType" value={t} checked={filters.employmentType === t} onChange={() => setFilters(f => ({...f, employmentType: t}))} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                        <input type="radio" name="empType" value={t} checked={filters.employmentType === t} onChange={() => { setFilters(f => ({...f, employmentType: t})); setPage(1); }} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                         <span className="group-hover:text-slate-900">{EMPLOYMENT_TYPE_LABELS[t] || t}</span>
                       </label>
                     ))}
@@ -446,7 +445,7 @@ export default function JobListPage() {
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Category</label>
                   <select 
                     value={filters.category} 
-                    onChange={(e) => setFilters(f => ({...f, category: e.target.value}))}
+                    onChange={(e) => { setFilters(f => ({...f, category: e.target.value})); setPage(1); }}
                     className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF] outline-none"
                   >
                     <option value="">All Categories</option>
@@ -457,7 +456,7 @@ export default function JobListPage() {
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Location</label>
                   <label className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                    <input type="checkbox" checked={filters.isRemote === "true"} onChange={(e) => setFilters(f => ({...f, isRemote: e.target.checked ? "true" : ""}))} className="w-4 h-4 rounded text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                    <input type="checkbox" checked={filters.isRemote === "true"} onChange={(e) => { setFilters(f => ({...f, isRemote: e.target.checked ? "true" : ""})); setPage(1); }} className="w-4 h-4 rounded text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                     <span>Remote Only</span>
                   </label>
                 </div>
@@ -486,7 +485,7 @@ export default function JobListPage() {
                 <p className="text-slate-500 max-w-md mx-auto mb-8">
                   We couldn't find any opportunities matching your current filters or search terms. Try adjusting them to see more results.
                 </p>
-                <button onClick={() => {setSearch(""); setFilters({ category: "", employmentType: "", isRemote: "" });}} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">
+                <button onClick={() => {setSearch(""); setFilters({ category: "", employmentType: "", isRemote: "" }); setPage(1);}} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">
                   Clear All Filters
                 </button>
               </motion.div>

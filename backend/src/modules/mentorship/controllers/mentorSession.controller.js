@@ -1,4 +1,12 @@
 // backend/src/modules/mentorship/controllers/mentorSession.controller.js
+//
+// UNCHANGED — no controller-level change needed. computePhase() output
+// (`phase`, `secondsUntilStart`/`secondsRemaining`) is already merged
+// into the `data.session` object (getSessionById) or each item in
+// `data.sessions` (getMySessions) at the service layer, so it flows
+// through sendResponse() automatically. Reproduced here only so the
+// file set stays complete and consistent.
+
 const mentorSessionService = require("../services/mentorSession.service");
 const sendResponse = require("../../../shared/response/sendResponse");
 const asyncHandler = require("../../../shared/utils/asyncHandler");

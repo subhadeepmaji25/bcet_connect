@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   MapPin, Briefcase, GraduationCap, Link as LinkIcon, Edit, Share2, Download,

@@ -8,9 +8,11 @@
 export const normalizeUser = (data) => {
   if (!data) return null;
 
-  const userObj = data.user || data.userId || (data.role ? data : null) || {};
-  const profileObj = data.profile || data.profileId || (data.fullName ? data : null) || {};
-  const mentorObj = data.mentorProfile || {};
+  const isObject = (val) => val && typeof val === 'object' && !Array.isArray(val);
+  
+  const userObj = (isObject(data.user) ? data.user : (isObject(data.userId) ? data.userId : null)) || (data.email ? data : null) || {};
+  const profileObj = (isObject(data.profile) ? data.profile : (isObject(data.profileId) ? data.profileId : null)) || (data.fullName ? data : null) || {};
+  const mentorObj = isObject(data.mentorProfile) ? data.mentorProfile : {};
   
   return {
     ...data, // keep original fields
@@ -39,9 +41,19 @@ export const normalizeUser = (data) => {
     reviewCount: mentorObj.reviewCount ?? data.reviewCount ?? data.totalRatings ?? 0,
     totalSessions: mentorObj.totalSessions ?? data.totalSessions ?? 0,
     
+    // Extracted aggregates
+    searchScore: data.searchScore ?? 0,
+    profileCompletion: data.profileCompletion ?? profileObj.profileCompletion ?? 0,
+    totalProjects: data.totalProjects ?? data.totalPublicProjects ?? 0,
+    totalExperiences: data.totalExperiences ?? 0,
+    
     // Skills (merge SearchProfile and standard Profile shapes)
-    skills: data.mergedSkills || data.skills || profileObj.skills || [],
-    domains: mentorObj.domains || data.domains || profileObj.domains || [],
+    skills: Array.isArray(data.mergedSkills) ? data.mergedSkills : 
+            Array.isArray(data.skills) ? data.skills : 
+            Array.isArray(profileObj.skills) ? profileObj.skills : [],
+    domains: Array.isArray(mentorObj.domains) ? mentorObj.domains : 
+             Array.isArray(data.domains) ? data.domains : 
+             Array.isArray(profileObj.domains) ? profileObj.domains : [],
   };
 };
 

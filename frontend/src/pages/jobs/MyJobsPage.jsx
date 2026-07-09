@@ -3,34 +3,46 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  Briefcase, Plus, Users, TrendingUp, AlertCircle, Search, 
-  MapPin, Filter, MoreVertical, Edit, Trash2, CheckCircle2,
-  XCircle, Clock, Copy, ChevronRight, Activity, Eye, FileText,
-  Archive, Lock, Unlock, Calendar, Tag, AlertTriangle, Zap
+  Briefcase, Plus, Users, TrendingUp, Activity, Search, Filter, FileText, AlertCircle, Zap, XCircle,
+  MapPin, CheckCircle2, MoreVertical, Edit, Trash2, Clock, Copy, ChevronRight, Eye,
+  Archive, Lock, Unlock, Calendar, Tag, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getMyJobs, deleteJob, closeJob, reopenJob, archiveJob } from '../../api/jobs.api';
+import { getMyJobs, deleteJob, closeJob, reopenJob, archiveJob, getJobApplications } from '../../api/jobs.api';
 
 // --- Premium Funnel Progress Bar ---
-const FunnelProgress = ({ applicants, shortlisted, interviewed, hired }) => {
-  const total = Math.max(applicants, 1);
+const FunnelProgress = ({ jobId }) => {
+  const { data } = useQuery({
+    queryKey: ['job-applications', jobId],
+    queryFn: () => getJobApplications(jobId, { limit: 1000 }),
+    staleTime: 60000,
+  });
+
+  const applications = data?.data?.applications || [];
+  const total = Math.max(applications.length, 1);
+  
+  const applied = applications.length;
+  const shortlisted = applications.filter(a => a.status === 'shortlisted').length;
+  const finalized = applications.filter(a => ['accepted', 'rejected'].includes(a.status)).length;
+  const withdrawn = applications.filter(a => a.status === 'withdrawn').length;
+
   const pS = (shortlisted / total) * 100;
-  const pI = (interviewed / total) * 100;
-  const pH = (hired / total) * 100;
+  const pF = (finalized / total) * 100;
+  const pW = (withdrawn / total) * 100;
 
   return (
     <div className="w-full mt-4">
       <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-        <span>Applied ({applicants})</span>
-        <span>Shortlisted ({shortlisted})</span>
-        <span>Interview ({interviewed})</span>
-        <span>Hired ({hired})</span>
+        <span>Applied ({applied})</span>
+        <span>Shortlist ({shortlisted})</span>
+        <span>Final ({finalized})</span>
+        <span>Withdrawn ({withdrawn})</span>
       </div>
       <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex relative">
-        {applicants > 0 && <div className="absolute left-0 top-0 bottom-0 bg-slate-300 rounded-full" style={{ width: '100%', zIndex: 1 }} />}
+        {applied > 0 && <div className="absolute left-0 top-0 bottom-0 bg-slate-300 rounded-full" style={{ width: '100%', zIndex: 1 }} />}
         {shortlisted > 0 && <div className="absolute left-0 top-0 bottom-0 bg-blue-400 rounded-full" style={{ width: `${pS}%`, zIndex: 2 }} />}
-        {interviewed > 0 && <div className="absolute left-0 top-0 bottom-0 bg-purple-500 rounded-full" style={{ width: `${pI}%`, zIndex: 3 }} />}
-        {hired > 0 && <div className="absolute left-0 top-0 bottom-0 bg-[#16A34A] rounded-full" style={{ width: `${pH}%`, zIndex: 4 }} />}
+        {finalized > 0 && <div className="absolute left-0 top-0 bottom-0 bg-purple-500 rounded-full" style={{ width: `${pF}%`, zIndex: 3 }} />}
+        {withdrawn > 0 && <div className="absolute left-0 top-0 bottom-0 bg-red-400 rounded-full" style={{ width: `${pW}%`, zIndex: 4 }} />}
       </div>
     </div>
   );
@@ -44,7 +56,6 @@ const RecruiterJobCard = ({ job, onAction }) => {
   const isPending = job.status === 'pending';
   const isRejected = job.status === 'rejected';
   const isClosed = job.status === 'closed';
-  const isExpired = job.status === 'expired';
   
   const statusColorMap = {
     pending: 'bg-amber-50 text-amber-600 border-amber-200',
@@ -57,11 +68,6 @@ const RecruiterJobCard = ({ job, onAction }) => {
   const applicants = job.applicationCount || job.applications?.length || 0;
   const views = job.viewCount || 0;
   const clicks = job.analytics?.clicks || 0;
-  
-  // Fake funnel metrics for UI purposes if 0
-  const shortlisted = Math.floor(applicants * 0.4);
-  const interviewed = Math.floor(shortlisted * 0.5);
-  const hired = Math.floor(interviewed * 0.2);
 
   const canEdit = isPending || isRejected;
   const canClose = isApproved;
@@ -146,7 +152,7 @@ const RecruiterJobCard = ({ job, onAction }) => {
       </div>
 
       {applicants > 0 && (
-         <FunnelProgress applicants={applicants} shortlisted={shortlisted} interviewed={interviewed} hired={hired} />
+         <FunnelProgress jobId={job._id} />
       )}
 
       <div className="mt-6 flex flex-col sm:flex-row gap-2">
@@ -229,7 +235,6 @@ export default function MyJobsPage() {
           {[
             { label: 'Active Postings', val: activeJobs, icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50' },
             { label: 'Total Applicants', val: totalApplicants, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Interviews (Mock)', val: Math.floor(totalApplicants * 0.15), icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
             { label: 'Avg Views', val: jobs.length > 0 ? Math.floor(jobs.reduce((acc, j) => acc + (j.viewCount || 0), 0) / jobs.length) : 0, icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-50' }
           ].map((stat, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-200 transition-colors">

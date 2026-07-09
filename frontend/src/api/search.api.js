@@ -1,12 +1,38 @@
-// src/api/search.api.js
-import axiosClient from "./axiosClient";
+import axiosClient from './axiosClient';
 
-export const searchUsers          = (params)    => axiosClient.get("/search/users", { params });
-export const searchBySkill        = (skill, params) => axiosClient.get(`/search/skills/${encodeURIComponent(skill)}`, { params });
-export const searchByBranch       = (branch, params) => axiosClient.get(`/search/branches/${encodeURIComponent(branch)}`, { params });
-export const searchByRole         = (role, params)   => axiosClient.get(`/search/roles/${encodeURIComponent(role)}`, { params });
-export const searchByCompany      = (company, params) => axiosClient.get(`/search/companies/${encodeURIComponent(company)}`, { params });
-export const getSearchSuggestions = (params)    => axiosClient.get("/search/suggestions", { params });
-export const getSearchStats       = ()          => axiosClient.get("/search/stats");
-export const getMySearchProfile   = ()          => axiosClient.get("/search/me");
-export const rebuildSearchProfile = ()          => axiosClient.post("/search/rebuild");
+/**
+ * Perform a user search with various filters.
+ * @param {Object} params - Query parameters (q, role, branch, company, passoutYear, etc.)
+ */
+export const searchUsers = (params) => {
+  return axiosClient.get('/search/users', { params });
+};
+
+/**
+ * Get search suggestions based on keyword.
+ * @param {string} q - Keyword
+ */
+export const searchSuggestions = (q) => {
+  return axiosClient.get('/search/suggestions', { params: { q } });
+};
+
+/**
+ * Get aggregate search statistics.
+ */
+export const getSearchStats = () => {
+  return axiosClient.get('/search/stats');
+};
+
+/**
+ * Fetch the logged-in user's search profile.
+ */
+export const getMySearchProfile = () => {
+  return axiosClient.get('/search/me');
+};
+
+/**
+ * Rebuild the logged-in user's search profile.
+ */
+export const rebuildMySearchProfile = () => {
+  return axiosClient.post('/search/rebuild');
+};

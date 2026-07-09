@@ -41,13 +41,17 @@ const buildSearchQuery = (
     minCompletion,
     recommendationReady,
     isMentor,
-    mentorProfileVisibility
+    mentorProfileVisibility,
+    allowedUserIds
   } = {},
   viewerId = null
 ) => {
   const andConditions = [];
 
   if (viewerId) andConditions.push({ userId: { $ne: viewerId } });
+  if (allowedUserIds && Array.isArray(allowedUserIds)) {
+    andConditions.push({ userId: { $in: allowedUserIds } });
+  }
   if (role) andConditions.push({ role });
 
   if (branch) {
@@ -153,6 +157,13 @@ const projectByVisibility = (profile) => {
   return limited;
 };
 
+// FIXED: getConnectionStatusesForViewer() returns a Map whose values are
+// OBJECTS ({ status, requestId? }), not bare strings. This used to fall
+// back to the string "none" while leaving the CONNECTED/PENDING cases as
+// raw objects — an inconsistent shape, so a frontend checking
+// `connectionStatus === "connected"` would never match. Now every branch
+// unwraps to just the status string, so connectionStatus is always one
+// of "none" | "pending_sent" | "pending_received" | "connected".
 const attachConnectionStatuses = async (profiles, viewerId) => {
   if (!viewerId || profiles.length === 0) return profiles;
 
@@ -161,7 +172,9 @@ const attachConnectionStatuses = async (profiles, viewerId) => {
 
   return profiles.map((profile) => ({
     ...profile,
-    connectionStatus: profile.userId ? statusMap.get(profile.userId.toString()) || "none" : "none"
+    connectionStatus: profile.userId
+      ? (statusMap.get(profile.userId.toString())?.status || "none")
+      : "none"
   }));
 };
 

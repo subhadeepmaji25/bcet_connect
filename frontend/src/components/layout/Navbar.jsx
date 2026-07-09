@@ -76,8 +76,15 @@ function NotificationDropdown({ onClose }) {
 
   const notifications = data?.data?.items || [];
 
+  const [now, setNow] = useState(() => Date.now());
+  
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const timeAgo = (dateStr) => {
-    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    const diff = Math.floor((now - new Date(dateStr)) / 1000);
     if (diff < 60) return 'just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;

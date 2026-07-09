@@ -98,6 +98,10 @@ const acceptRequest = async (requestId, mentorUserId, meetingNote = "") => {
   await request.save();
 
   const conversation = await ensureConversation(request.studentId, request.mentorId, { requestId });
+  if (conversation) {
+    request.conversationId = conversation._id;
+    await request.save();
+  }
   const mentorName = await getUsernameSafe(mentorUserId);
 
   await notify(NOTIFICATION_EVENTS.MENTOR_REQUEST_ACCEPTED, {

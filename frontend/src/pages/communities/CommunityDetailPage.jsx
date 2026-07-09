@@ -16,7 +16,6 @@ import CommunityRequestsTab from "../../components/communities/requests/Communit
 
 export default function CommunityDetailPage() {
   const { communityId } = useParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("feed");
 
   // Fetch Community basic details

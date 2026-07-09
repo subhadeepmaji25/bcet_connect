@@ -4,12 +4,16 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './routes/ProtectedRoute';
 import RoleRoute from './routes/RoleRoute';
 import ProtectedLayout from './components/layout/ProtectedLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 const LoginPage             = lazy(() => import('./pages/auth/LoginPage'));
 const RegisterPage          = lazy(() => import('./pages/auth/RegisterPage'));
 const ResetPasswordPage     = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const AccountStatusPage     = lazy(() => import('./pages/auth/AccountStatusPage'));
+
+// ─── Feed ─────────────────────────────────────────────────────────────────────
+const FeedPage              = lazy(() => import('./features/feed/components/FeedPage'));
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 const MyProfilePage         = lazy(() => import('./pages/profile/MyProfilePage'));
@@ -33,6 +37,7 @@ const MentorProfilePage         = lazy(() => import('./pages/mentorship/MentorPr
 const BecomeMentorPage          = lazy(() => import('./pages/mentorship/BecomeMentorPage'));
 const MyMentorRequestsPage      = lazy(() => import('./pages/mentorship/MyMentorRequestsPage'));
 const ReceivedMentorRequestsPage = lazy(() => import('./pages/mentorship/ReceivedMentorRequestsPage'));
+const MentorSessionsPage        = lazy(() => import('./pages/mentorship/MentorSessionsPage'));
 
 // ─── Connections ──────────────────────────────────────────────────────────────
 const MyConnectionsPage     = lazy(() => import('./pages/connections/MyConnectionsPage'));
@@ -68,77 +73,83 @@ const PageLoader = () => (
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
-        {/* Public */}
-        <Route path="/login"          element={<LoginPage />} />
-        <Route path="/register"       element={<RegisterPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/account-status" element={<AccountStatusPage />} />
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/login"          element={<LoginPage />} />
+          <Route path="/register"       element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/account-status" element={<AccountStatusPage />} />
 
-        {/* Protected — all inside ProtectedRoute → ProtectedLayout */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<ProtectedLayout />}>
-            <Route path="/" element={<Navigate to="/jobs" replace />} />
+          {/* Protected — all inside ProtectedRoute → ProtectedLayout */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<ProtectedLayout />}>
+              <Route path="/" element={<Navigate to="/feed" replace />} />
 
-            {/* Jobs */}
-            <Route path="/jobs"                 element={<JobListPage />} />
-            <Route path="/jobs/:jobId"          element={<JobDetailPage />} />
-            <Route path="/jobs/applications/my" element={<MyApplicationsPage />} />
+              {/* Feed */}
+              <Route path="/feed"                 element={<FeedPage />} />
 
-            {/* Profile */}
-            <Route path="/profile"              element={<MyProfilePage />} />
-            <Route path="/profile/:userId"      element={<PublicProfilePage />} />
+              {/* Jobs */}
+              <Route path="/jobs"                 element={<JobListPage />} />
+              <Route path="/jobs/:jobId"          element={<JobDetailPage />} />
+              <Route path="/jobs/applications/my" element={<MyApplicationsPage />} />
 
-            {/* Search */}
-            <Route path="/search"               element={<SearchPage />} />
+              {/* Profile */}
+              <Route path="/profile"              element={<MyProfilePage />} />
+              <Route path="/profile/:userId"      element={<PublicProfilePage />} />
 
-            {/* Notifications */}
-            <Route path="/notifications"         element={<NotificationsPage />} />
+              {/* Search */}
+              <Route path="/search"               element={<SearchPage />} />
 
-            {/* Mentors (public for all auth users) */}
-            <Route path="/mentors"              element={<MentorListPage />} />
-            <Route path="/mentors/:mentorId"    element={<MentorProfilePage />} />
-            <Route path="/mentors/requests/my"  element={<MyMentorRequestsPage />} />
+              {/* Notifications */}
+              <Route path="/notifications"         element={<NotificationsPage />} />
 
-            {/* Connections */}
-            <Route path="/connections"          element={<MyConnectionsPage />} />
-            <Route path="/connections/requests" element={<ConnectionRequestsPage />} />
+              {/* Mentors (public for all auth users) */}
+              <Route path="/mentors"              element={<MentorListPage />} />
+              <Route path="/mentors/:mentorId"    element={<MentorProfilePage />} />
+              <Route path="/mentors/requests/my"  element={<MyMentorRequestsPage />} />
+              <Route path="/mentors/sessions"     element={<MentorSessionsPage />} />
 
-            {/* Communities */}
-            <Route path="/communities"            element={<DiscoverCommunitiesPage />} />
-            <Route path="/communities/create"     element={<CreateCommunityPage />} />
-            <Route path="/communities/:communityId" element={<CommunityDetailPage />} />
+              {/* Connections */}
+              <Route path="/connections"          element={<MyConnectionsPage />} />
+              <Route path="/connections/requests" element={<ConnectionRequestsPage />} />
 
-            {/* Chat (Unified WhatsApp Style) */}
-            <Route path="/chat"                 element={<ChatLayout />} />
-            <Route path="/chat/:conversationId" element={<ChatLayout />} />
+              {/* Communities */}
+              <Route path="/communities"            element={<DiscoverCommunitiesPage />} />
+              <Route path="/communities/create"     element={<CreateCommunityPage />} />
+              <Route path="/communities/:communityId" element={<CommunityDetailPage />} />
 
-            {/* ── Role: faculty/alumni/admin ── */}
-            <Route element={<RoleRoute allowedRoles={['faculty','alumni','admin']} />}>
-              <Route path="/jobs/post"                          element={<PostJobPage />} />
-              <Route path="/jobs/my"                            element={<MyJobsPage />} />
-              <Route path="/mentors/become"                     element={<BecomeMentorPage />} />
-              <Route path="/mentors/requests/received"          element={<ReceivedMentorRequestsPage />} />
+              {/* Chat (Unified WhatsApp Style) */}
+              <Route path="/chat"                 element={<ChatLayout />} />
+              <Route path="/chat/:conversationId" element={<ChatLayout />} />
+
+              {/* ── Role: faculty/alumni/admin ── */}
+              <Route element={<RoleRoute allowedRoles={['faculty','alumni','admin']} />}>
+                <Route path="/jobs/post"                          element={<PostJobPage />} />
+                <Route path="/jobs/my"                            element={<MyJobsPage />} />
+                <Route path="/mentors/become"                     element={<BecomeMentorPage />} />
+                <Route path="/mentors/requests/received"          element={<ReceivedMentorRequestsPage />} />
+              </Route>
+
+              {/* ── Role: student/alumni ── */}
+              <Route element={<RoleRoute allowedRoles={['student','alumni']} />}>
+                <Route path="/recommendation"  element={<RecommendedJobsPage />} />
+              </Route>
+
+              {/* ── Role: admin only ── */}
+              <Route element={<RoleRoute allowedRoles={['admin']} />}>
+                <Route path="/admin"                element={<AdminDashboardPage />} />
+                <Route path="/jobs/admin/pending"   element={<AdminJobApprovalsPage />} />
+              </Route>
+
             </Route>
-
-            {/* ── Role: student/alumni ── */}
-            <Route element={<RoleRoute allowedRoles={['student','alumni']} />}>
-              <Route path="/recommendation"  element={<RecommendedJobsPage />} />
-            </Route>
-
-            {/* ── Role: admin only ── */}
-            <Route element={<RoleRoute allowedRoles={['admin']} />}>
-              <Route path="/admin"                element={<AdminDashboardPage />} />
-              <Route path="/jobs/admin/pending"   element={<AdminJobApprovalsPage />} />
-            </Route>
-
           </Route>
-        </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Suspense>
+          {/* 404 */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

@@ -70,8 +70,7 @@ function RequestCard({ req, tab, onAccept, onReject, onCancel, onMessage, isMess
   const personId = person?._id || person?.userId;
   const displayName = person?.fullName || person?.username || 'User';
   
-  // Mock AI Networking Data
-  const careerMatch = Math.floor(Math.random() * 20) + 75; // 75-94%
+  const careerMatch = req.matchScore || person?.matchScore;
 
   return (
     <motion.div 
@@ -113,9 +112,11 @@ function RequestCard({ req, tab, onAccept, onReject, onCancel, onMessage, isMess
                 {ROLE_LABELS[person.role] || person.role}
               </span>
             )}
-            <span className="flex items-center gap-1 text-xs font-semibold text-[#15803D] bg-[#16A34A]/10 px-2 py-0.5 rounded-md">
-              <Zap className="w-3 h-3" /> {careerMatch}% Career Match
-            </span>
+            {careerMatch && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-[#15803D] bg-[#16A34A]/10 px-2 py-0.5 rounded-md">
+                <Zap className="w-3 h-3" /> {Math.round(careerMatch * 100)}% Career Match
+              </span>
+            )}
           </div>
 
           {req.message && (

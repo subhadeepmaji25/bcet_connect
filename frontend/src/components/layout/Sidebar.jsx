@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   Zap, Briefcase, Search, Sparkles, Users, GraduationCap,
   MessageSquare, User, FileText, Building2, LayoutDashboard,
-  Clock, Star, UserCheck, LogOut, ChevronRight, Bell
+  Clock, Star, UserCheck, LogOut, ChevronRight, Bell, Activity
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS, ROLE_COLORS } from '../../constants/appConstants';
@@ -38,7 +38,7 @@ export default function Sidebar({ collapsed, onClose }) {
   const isAdmin   = role === 'admin';
   const canPost   = isFaculty || isAlumni || isAdmin;
   const canApply  = isStudent || isAlumni;
-  const isMentor  = canPost; // faculty/alumni can be mentors
+  const canBeMentor = isFaculty || isAlumni;
 
   return (
     <>
@@ -72,7 +72,7 @@ export default function Sidebar({ collapsed, onClose }) {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           <NavGroup title="Discover">
-            <NavItem to="/dashboard"      icon={LayoutDashboard} label="Dashboard"     end />
+            <NavItem to="/feed"           icon={Activity}       label="Feed"          end />
             <NavItem to="/communities"    icon={Users}          label="Communities"   end />
             <NavItem to="/jobs"           icon={Briefcase}      label="Jobs"          end />
             {canApply && <NavItem to="/recommendation" icon={Sparkles} label="Recommended" end />}
@@ -91,8 +91,8 @@ export default function Sidebar({ collapsed, onClose }) {
             {canPost  && <NavItem to="/jobs/my"              icon={Building2} label="My Jobs"          end />}
             {canPost  && <NavItem to="/jobs/post"            icon={Briefcase} label="Post a Job"       end />}
             {canApply && <NavItem to="/mentors/requests/my"  icon={Clock}     label="My Mentorship Requests"  end />}
-            {isMentor && <NavItem to="/mentors/requests/received" icon={Star} label="Received Requests" end />}
-            {isMentor && !user?.isMentor && (
+            {canBeMentor && <NavItem to="/mentors/requests/received" icon={Star} label="Received Requests" end />}
+            {canBeMentor && (
               <NavItem to="/mentors/become" icon={GraduationCap} label="Become Mentor" end />
             )}
             <NavItem to="/notifications" icon={Bell} label="Notifications" end />

@@ -1,14 +1,25 @@
 // backend/src/modules/communication/services/conversation.service.js
+//
+// UPDATED: getConversationById() now attaches a `canSendMessage` flag
+// computed via the same engine-layer time-window check sendMessage()
+// uses (isMentorshipConversationCurrentlySendable). This is a proactive
+// signal for the frontend — it can disable the chat input directly once
+// a mentorship session ends, instead of only discovering the block when
+// sendMessage() throws a 403. Reuses the exact same check, so this can
+// never drift out of sync with what the server will actually allow.
+// For direct/community conversations, this always resolves to true
+// (the gating function is a no-op for non-mentorship types).
+
 const Conversation = require("../models/Conversation");
 const ApiError = require("../../../shared/errors/ApiError");
-const { canCommunicate } = require("../../../engines/communication-access");
+const { canCommunicate, isMentorshipConversationCurrentlySendable } = require("../../../engines/communication-access"); // isMentorshipConversationCurrentlySendable NEW
 const {
   CONVERSATION_TYPES,
   CONVERSATION_STATUS
 } = require("../constants/communication.constants");
 
 const isParticipant = (conversation, userId) =>
-  conversation.participants.some((p) => p.toString() === userId.toString());
+  conversation.participants.some((p) => (p._id || p).toString() === userId.toString());
 
 const getOrCreateConversation = async (userIdOne, userIdTwo, type = CONVERSATION_TYPES.DIRECT) => {
   const participants = [userIdOne.toString(), userIdTwo.toString()].sort();
@@ -79,13 +90,14 @@ const getMyConversations = async (userId, { page = 1, limit = 20, type, status, 
   return { conversations, pagination: { total, page: Number(page), limit: Number(limit) } };
 };
 
+// UPDATED — attaches canSendMessage alongside the conversation.
 const getConversationById = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId).populate(
     "participants",
     "username email role"
   );
   if (!conversation) throw ApiError.notFound("Conversation not found");
-  
+
   if (conversation.type === "community") {
     const CommunityMember = require("../../communities/models/CommunityMember");
     const isMember = await CommunityMember.exists({ communityId: conversation.communityId, userId });
@@ -95,13 +107,42 @@ const getConversationById = async (conversationId, userId) => {
   } else if (!isParticipant(conversation, userId)) {
     throw ApiError.forbidden("You are not part of this conversation");
   }
-  return { success: true, message: "Conversation fetched", data: { conversation } };
+
+  // NEW: same engine-layer check sendMessage() uses, so the frontend can
+  // proactively disable the chat input rather than relying on a 403.
+  const canSendMessage = await isMentorshipConversationCurrentlySendable(conversation);
+
+  let mentorshipSession = null;
+  if (conversation.type === "mentorship") {
+    const MentorSession = require("../../mentorship/models/MentorSession");
+    
+    // Auto-patch any orphaned sessions created during the bug
+    const orphanedSession = await MentorSession.findOne({
+      studentId: { $in: conversation.participants },
+      mentorId: { $in: conversation.participants },
+      conversationId: null
+    });
+    if (orphanedSession) {
+      orphanedSession.conversationId = conversation._id;
+      await orphanedSession.save();
+    }
+
+    mentorshipSession = await MentorSession.findOne({
+      conversationId: conversation._id,
+      status: { $nin: ["cancelled", "completed", "no_show"] }
+    })
+      .sort({ scheduledAt: 1 })
+      .select("status scheduledAt endsAt duration mode meetingLink")
+      .lean();
+  }
+
+  return { success: true, message: "Conversation fetched", data: { conversation, canSendMessage, mentorshipSession } };
 };
 
 const archiveConversation = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) throw ApiError.notFound("Conversation not found");
-  
+
   if (conversation.type === "community") {
     const CommunityMember = require("../../communities/models/CommunityMember");
     const isMember = await CommunityMember.exists({ communityId: conversation.communityId, userId });
@@ -123,7 +164,7 @@ const archiveConversation = async (conversationId, userId) => {
 const unarchiveConversation = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) throw ApiError.notFound("Conversation not found");
-  
+
   if (conversation.type === "community") {
     const CommunityMember = require("../../communities/models/CommunityMember");
     const isMember = await CommunityMember.exists({ communityId: conversation.communityId, userId });
@@ -158,7 +199,7 @@ const touchLastMessage = async (conversationId, senderId, previewText) => {
 const assertParticipant = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) throw ApiError.notFound("Conversation not found");
-  
+
   if (conversation.type === "community") {
     const CommunityMember = require("../../communities/models/CommunityMember");
     const isMember = await CommunityMember.exists({ communityId: conversation.communityId, userId });

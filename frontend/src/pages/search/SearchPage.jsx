@@ -1,534 +1,355 @@
-import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import { Search, Users, MapPin, Briefcase, GraduationCap, Filter, Star, ChevronRight, CheckCircle2, TrendingUp, Activity, X, RefreshCw, Network } from 'lucide-react';
-import { searchUsers, searchBySkill, searchByBranch, searchByRole, getSearchSuggestions, getSearchStats, rebuildSearchProfile } from '../../api/search.api';
-import { getTopMentors } from '../../api/mentorship.api';
-import { useDebounce } from '../../hooks/useDebounce';
-import Avatar from '../../components/ui/Avatar';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Filter, X, SlidersHorizontal, Users, GraduationCap, ChevronDown } from 'lucide-react';
+import { searchUsers, searchSuggestions } from '../../api/search.api';
+import SearchUserCard from './components/SearchUserCard';
 import Pagination from '../../components/ui/Pagination';
-import { ROLES, ROLE_LABELS, ROLE_COLORS } from '../../constants/appConstants';
-import { normalizeUser } from '../../utils/normalize';
+import EmptyState from '../../components/ui/EmptyState';
 
-const FILTER_TYPES = [
-  { key: 'users', label: 'All Users', icon: Users },
-  { key: 'skill', label: 'By Skill', icon: Briefcase },
-  { key: 'branch', label: 'By Branch', icon: GraduationCap },
-  { key: 'role', label: 'By Role', icon: Filter },
+const ROLES = [
+  { value: 'student', label: 'Student' },
+  { value: 'alumni', label: 'Alumni' },
+  { value: 'faculty', label: 'Faculty' }
 ];
-
-function UserCard({ user: rawUser }) {
-  const user = normalizeUser(rawUser);
-  
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'connected': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
-      case 'pending': return 'bg-amber-50 text-amber-600 border-amber-200';
-      default: return 'bg-slate-50 text-slate-500 border-slate-200';
-    }
-  };
-
-  return (
-    <Link to={`/profile/${user.userId || user._id}`} className="group relative overflow-hidden bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex items-start gap-4 sm:gap-5">
-      {user.isLimitedProfile && (
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 shadow-lg">
-            <Star className="w-4 h-4 text-amber-400" /> Private Profile
-          </div>
-        </div>
-      )}
-      
-      <Avatar src={user.avatar} name={user.fullName} size="xl" className="ring-4 ring-slate-50 group-hover:ring-indigo-50 transition-all duration-300 shadow-sm" />
-      <div className="flex-1 min-w-0 z-0 pt-0.5">
-        <div className="flex items-center gap-2 flex-wrap mb-1.5">
-          <p className="font-black text-[17px] text-slate-900 group-hover:text-indigo-600 transition-colors truncate tracking-tight">{user.fullName}</p>
-          {user.isLimitedProfile && <span className="badge badge-danger text-[10px] px-2 py-0.5 rounded-md font-bold">Private</span>}
-          {user.role && <span className={`badge text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wide ${ROLE_COLORS[user.role] || 'badge-neutral'}`}>{ROLE_LABELS[user.role] || user.role}</span>}
-          {user.isMentor && <span className="badge badge-warning text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 uppercase tracking-wide"><Star className="w-3 h-3 fill-current" /> Mentor</span>}
-          {user.connectionStatus && user.connectionStatus !== 'none' && (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 uppercase tracking-wide ${getStatusColor(user.connectionStatus)}`}>
-              <Network className="w-3 h-3" /> {user.connectionStatus}
-            </span>
-          )}
-        </div>
-        <p className="text-indigo-600/80 text-[13px] font-bold mb-2">@{user.username}</p>
-        
-        {!user.isLimitedProfile && (
-          <>
-            {user.headline && <p className="text-slate-600 text-[13.5px] font-medium line-clamp-1 mb-3">{user.headline}</p>}
-            <div className="flex items-center gap-x-4 gap-y-2 flex-wrap text-xs font-semibold text-slate-500 mb-3.5">
-              {user.company && <span className="flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-slate-400" />{user.company}</span>}
-              {user.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" />{user.location}</span>}
-              {user.branch && <span className="flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5 text-slate-400" />{user.branch}</span>}
-            </div>
-            {user.skills && user.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {user.skills.slice(0, 4).map((s, i) => (
-                  <span key={i} className="text-[10px] font-bold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md border border-slate-200 hover:bg-slate-200 transition-colors">{s}</span>
-                ))}
-                {user.skills.length > 4 && <span className="text-[10px] font-bold px-2.5 py-1 bg-slate-50 text-slate-500 rounded-md border border-slate-200">+{user.skills.length - 4}</span>}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      <div className="hidden sm:flex self-center w-10 h-10 rounded-full bg-slate-50 group-hover:bg-indigo-50 items-center justify-center shrink-0 transition-colors">
-        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors group-hover:translate-x-0.5" />
-      </div>
-    </Link>
-  );
-}
-
-function DiscoveryDashboard() {
-  const { data: statsData } = useQuery({ queryKey: ['searchStats'], queryFn: () => getSearchStats().catch(() => ({ data: { stats: {} } })) });
-  const { data: mentorsData } = useQuery({ queryKey: ['topMentors'], queryFn: () => getTopMentors().catch(() => ({ data: { mentors: [] } })) });
-  
-  const stats = statsData?.data?.stats || {};
-  const mentors = mentorsData?.data?.mentors || [];
-
-  return (
-    <div className="space-y-8 animate-fade-in-up">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Users', value: stats.totalPublicProfiles || '-', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Mentors', value: stats.mentors || '-', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Top Ready', value: stats.recommendationReadyProfiles || '-', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Active Roles', value: stats.roleBreakdown?.length || '-', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' }
-        ].map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col items-center justify-center text-center group hover:-translate-y-1 transition-all duration-300">
-            <div className={`w-12 h-12 rounded-full ${s.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-              <s.icon className={`w-6 h-6 ${s.color}`} />
-            </div>
-            <p className="text-3xl font-black text-slate-900 tracking-tight">{s.value}</p>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {mentors.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-indigo-600" /> Trending Mentors
-            </h3>
-            <Link to="/mentors" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 group">
-              View All <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {mentors.slice(0, 3).map(mentor => {
-              if (!mentor) return null;
-              return <UserCard key={mentor._id || Math.random()} user={mentor} />;
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Try Searching State */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 border border-indigo-100/50 text-center relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-indigo-600">
-          <Search className="w-8 h-8" />
-        </div>
-        <h3 className="text-xl font-black text-slate-900 mb-2">Ready to explore?</h3>
-        <p className="text-slate-600 font-medium max-w-md mx-auto">Start typing in the search bar above to find students, alumni, faculty, and industry professionals.</p>
-        
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {['React', 'Machine Learning', 'Data Science', 'Google', 'SDE'].map(tag => (
-            <span key={tag} className="px-3 py-1.5 bg-white border border-indigo-100 text-indigo-700 text-xs font-bold rounded-full shadow-sm">
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
-  const [query, setQuery] = useState(initialQuery);
-  const [filterType, setFilterType] = useState('users');
-  const [selectedRole, setSelectedRole] = useState('');
-  const [page, setPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
   
-  // Update query if URL changes externally
-  useEffect(() => {
-    const q = searchParams.get('q');
-    if (q !== null && q !== query) {
-      setQuery(q);
-    }
-  }, [searchParams]);
+  // Local state for the search bar
+  const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionRef = useRef(null);
 
-  // Update URL when query changes (optional, keeps URL in sync for sharing)
-  useEffect(() => {
-    if (query) {
-      setSearchParams({ q: query }, { replace: true });
-    } else {
-      searchParams.delete('q');
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [query]);
-  
-  // Advanced Filters
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState({
-    minCompletion: '',
-    recommendationReady: false,
-    company: '',
-    passoutYear: '',
-    isMentor: false,
-    branch: ''
+  // Filters from URL
+  const filters = {
+    q: searchParams.get('q') || '',
+    role: searchParams.get('role') || '',
+    branch: searchParams.get('branch') || '',
+    company: searchParams.get('company') || '',
+    passoutYear: searchParams.get('passoutYear') || '',
+    isMentor: searchParams.get('isMentor') || '',
+    page: parseInt(searchParams.get('page')) || 1
+  };
+
+  // Main search query
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['search-users', filters],
+    queryFn: () => searchUsers(filters),
+    keepPreviousData: true
   });
 
-  const debouncedQuery = useDebounce(query, 400);
-  const navigate = useNavigate();
-  const dropdownRef = useRef(null);
-  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
-  // Reset page on filter/query changes
-  useEffect(() => { setPage(1); }, [debouncedQuery, filterType, selectedRole, advancedFilters]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownVisible(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownRef]);
-
-  // Autocomplete Suggestions Query
+  // Suggestions query
   const { data: suggestionsData } = useQuery({
-    queryKey: ['searchSuggestions', debouncedQuery],
-    queryFn: () => getSearchSuggestions({ q: debouncedQuery, keyword: debouncedQuery }),
-    enabled: !!debouncedQuery.trim() && filterType === 'users',
-    staleTime: 60000,
+    queryKey: ['search-suggestions', query],
+    queryFn: () => searchSuggestions(query),
+    enabled: query.length > 2,
+    staleTime: 60000
   });
 
   const suggestions = suggestionsData?.data?.suggestions || [];
 
-  const { data, isPending } = useQuery({
-    queryKey: ['search', filterType, debouncedQuery, selectedRole, advancedFilters, page],
-    queryFn: () => {
-      if (!debouncedQuery.trim() && filterType !== 'role' && Object.values(advancedFilters).every(v => !v)) {
-        return Promise.resolve({ data: [] });
+  // Click outside to close suggestions
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (suggestionRef.current && !suggestionRef.current.contains(e.target)) {
+        setShowSuggestions(false);
       }
-      
-      const queryParams = { ...advancedFilters, page };
-      // Clean up empty filters to keep query string clean and avoid backend errors
-      Object.keys(queryParams).forEach(key => {
-        if (queryParams[key] === '' || queryParams[key] === null || queryParams[key] === undefined || queryParams[key] === false) {
-           delete queryParams[key];
-        }
-      });
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
-      if (filterType === 'users' && debouncedQuery.trim()) {
-        queryParams.q = debouncedQuery.trim();
-      }
-      
-      switch (filterType) {
-        case 'skill':  return searchBySkill(debouncedQuery.trim(), queryParams);
-        case 'branch': return searchByBranch(debouncedQuery.trim(), queryParams);
-        case 'role':   return searchByRole(selectedRole || 'student', queryParams);
-        default:       return searchUsers(queryParams);
-      }
-    },
-    enabled: true, // Always enabled so filters can trigger it even if query is empty
-  });
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setShowSuggestions(false);
+    updateFilter('q', query);
+    updateFilter('page', 1);
+  };
 
-  const rebuildMut = useMutation({
-    mutationFn: rebuildSearchProfile,
-    onSuccess: () => toast.success('Search profile successfully rebuilt!'),
-    onError: (e) => toast.error(e.message || 'Failed to rebuild search profile')
-  });
+  const updateFilter = (key, value) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value) {
+      newParams.set(key, value);
+    } else {
+      newParams.delete(key);
+    }
+    if (key !== 'page') {
+      newParams.set('page', 1);
+    }
+    setSearchParams(newParams);
+  };
+
+  const clearFilters = () => {
+    const q = searchParams.get('q');
+    setSearchParams(q ? { q } : {});
+  };
+
+  const handlePageChange = (page) => {
+    updateFilter('page', page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const users = data?.data?.users || [];
-  
-  // Determine if we should show discovery dashboard
-  const isQueryEmpty = !debouncedQuery.trim();
-  const isFiltersEmpty = Object.values(advancedFilters).every(v => !v);
-  const showDiscovery = isQueryEmpty && isFiltersEmpty && filterType !== 'role';
+  const meta = data?.meta?.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-20 mt-4 px-4 sm:px-6 lg:px-8">
-      {/* ─── Premium Header ─── */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-950 via-dark-900 to-indigo-900 border border-white/10 p-8 sm:p-12 mb-8 shadow-2xl shadow-indigo-900/20">
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay"></div>
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-primary-500/30 rounded-full blur-[120px] pointer-events-none"></div>
+    <div className="min-h-screen bg-[#F7F8FA] pb-20">
+      {/* ── Hero Search Section ── */}
+      <div className="bg-white border-b border-slate-200 pt-10 pb-16 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-purple-50/50" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22%236366f1%22%20fill-opacity%3D%220.03%22%20fill-rule%3D%22evenodd%22%3E%3Ccircle%20cx%3D%223%22%20cy%3D%223%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2213%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-70" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="max-w-2xl">
-            <h1 className="font-display text-4xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-4 mb-4">
-              <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-lg">
-                <Search className="w-8 h-8 text-indigo-300" />
-              </div>
-              Discover Talent
+        <div className="max-w-6xl mx-auto px-5 relative z-10">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-4">
+              Discover <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Amazing People</span>
             </h1>
-            <p className="text-indigo-200/80 text-lg leading-relaxed font-medium">
-              Find exceptional students, faculty, alumni, and industry mentors across our global network. Search by skills, roles, or branch.
+            <p className="text-slate-500 font-medium max-w-xl mx-auto">
+              Find students, alumni, faculty, and mentors based on skills, branches, roles, and more. Connect and grow your network.
             </p>
           </div>
-          <button 
-            onClick={() => rebuildMut.mutate()} 
-            disabled={rebuildMut.isPending}
-            className="group flex items-center gap-2.5 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 rounded-xl transition-all font-semibold shadow-lg disabled:opacity-50 hover:scale-105 active:scale-95 shrink-0"
-          >
-            <RefreshCw className={`w-4 h-4 ${rebuildMut.isPending ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-            Sync Search Profile
-          </button>
+
+          <div className="max-w-3xl mx-auto relative" ref={suggestionRef}>
+            <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <Search className="w-6 h-6 text-indigo-500" />
+              </div>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Search by name, skills, role, or company..."
+                className="w-full pl-14 pr-32 py-5 bg-white border-2 border-indigo-100 focus:border-indigo-500 rounded-2xl shadow-xl shadow-indigo-500/5 text-lg font-medium text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
+              />
+              <div className="absolute right-3 flex items-center gap-2">
+                {query && (
+                  <button type="button" onClick={() => setQuery('')} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all"
+                >
+                  Search
+                </button>
+              </div>
+            </form>
+
+            {/* Suggestions Dropdown */}
+            <AnimatePresence>
+              {showSuggestions && suggestions.length > 0 && query.length > 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 divide-y divide-slate-50"
+                >
+                  {suggestions.map((s) => (
+                    <div
+                      key={s._id}
+                      onClick={() => {
+                        setQuery(s.fullName || s.username);
+                        setShowSuggestions(false);
+                        updateFilter('q', s.fullName || s.username);
+                      }}
+                      className="flex items-center gap-4 p-4 hover:bg-indigo-50/50 cursor-pointer transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold overflow-hidden border border-indigo-200 shrink-0">
+                        {s.avatar ? <img src={s.avatar} alt="avatar" className="w-full h-full object-cover" /> : s.fullName?.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-900 text-sm truncate">{s.fullName}</p>
+                        <p className="text-xs text-slate-500 font-medium truncate">{s.headline || s.currentRole}</p>
+                      </div>
+                      {s.role && (
+                         <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase rounded-lg">
+                           {s.role}
+                         </span>
+                      )}
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Main Content Area */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Search Bar & Tabs */}
-          <div className="bg-white rounded-[1.5rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 space-y-6">
-            <div className="relative group" ref={dropdownRef}>
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative bg-slate-50 border border-slate-200 rounded-2xl flex items-center p-2.5 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white transition-all shadow-sm">
-                <Search className="w-5 h-5 text-slate-400 ml-3 mr-2" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={e => {
-                    setQuery(e.target.value);
-                    setIsDropdownVisible(true);
-                  }}
-                  onFocus={() => setIsDropdownVisible(true)}
-                  placeholder={
-                    filterType === 'skill' ? 'Search by specialized skills (e.g. react, python)...' :
-                    filterType === 'branch' ? 'Search by academic branch (e.g. CSE, ECE)...' :
-                    filterType === 'role' ? 'Select a role below to filter...' :
-                    'Search by name, username, or headline...'
-                  }
-                  className="bg-transparent border-none w-full text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none focus:ring-0 py-2"
-                  disabled={filterType === 'role'}
-                  autoFocus
-                />
-                
-                {/* Autocomplete Dropdown */}
-                {suggestions.length > 0 && isDropdownVisible && query.trim() && filterType === 'users' && (
-                  <div className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl p-2 z-50 max-h-80 overflow-y-auto animate-fade-in-up shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5">
-                    <p className="text-[11px] text-slate-400 font-bold px-4 py-2.5 uppercase tracking-widest">Suggestions</p>
-                    {suggestions.map((suggestion, idx) => {
-                      if (!suggestion) return null;
-                      return (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setQuery(suggestion.fullName || suggestion.username || '');
-                          setIsDropdownVisible(false);
-                          navigate(`/profile/${suggestion._id || suggestion.userId}`);
-                        }}
-                        className="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-4 group/item"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0 border border-indigo-100 group-hover/item:scale-105 transition-transform duration-300">
-                          <Search className="w-4 h-4 text-indigo-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-slate-900 font-bold text-sm truncate tracking-tight">{suggestion.fullName || suggestion.username || 'User'}</p>
-                          {suggestion.headline && <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{suggestion.headline}</p>}
-                        </div>
-                      </button>
-                    )})}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Filter Type Tabs */}
-            <div className="flex gap-2.5 flex-wrap items-center">
-              {FILTER_TYPES.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => { setFilterType(key); setQuery(''); }}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold border transition-all duration-300 ${
-                    filterType === key
-                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" /> {label}
-                </button>
-              ))}
-              
-              <button 
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className={`ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold border transition-all lg:hidden ${
-                  isFilterOpen ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600'
-                }`}
-              >
-                <Filter className="w-4 h-4" /> Filters
-              </button>
-            </div>
-
-            {/* Role selector */}
-            {filterType === 'role' && (
-              <div className="flex gap-2 flex-wrap animate-fade-in pt-4 border-t border-slate-100">
-                {Object.entries(ROLE_LABELS).filter(([k]) => k !== 'admin').map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedRole(key)}
-                    className={`px-5 py-2 rounded-xl text-sm font-bold border transition-all duration-300 ${
-                      selectedRole === key
-                        ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Results Area */}
-          {showDiscovery ? (
-             <DiscoveryDashboard />
-          ) : isPending ? (
-            <div className="space-y-4">
-              {[...Array(4)].map((_, i) => <div key={i} className="glass-card p-6 skeleton h-32 rounded-2xl" />)}
-            </div>
-          ) : users.length === 0 ? (
-            <div className="glass-card p-16 text-center flex flex-col items-center justify-center animate-fade-in-up mt-8">
-              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-                <Search className="w-10 h-10 text-slate-500" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-200 mb-2">No Profiles Found</h3>
-              <p className="text-slate-400 max-w-md mx-auto text-sm">We couldn't find anyone matching your current search criteria. Try adjusting your filters or search term.</p>
-            </div>
-          ) : (
-            <div className="animate-fade-in-up mt-8">
-              <div className="flex items-center justify-between mb-4 px-2">
-                <p className="text-slate-400 text-sm font-medium"><span className="text-primary-400 font-bold">{data?.meta?.pagination?.totalElements || users.length}</span> profile{(data?.meta?.pagination?.totalElements || users.length) !== 1 ? 's' : ''} discovered</p>
-              </div>
-              <div className="grid grid-cols-1 gap-4 mb-8">
-                {users.map(u => {
-                  if (!u) return null;
-                  return <UserCard key={u._id || u.userId || Math.random()} user={u} />;
-                })}
-              </div>
-              
-              {data?.meta?.pagination && (
-                <Pagination
-                  currentPage={data.meta.pagination.page}
-                  totalPages={data.meta.pagination.totalPages}
-                  onPageChange={setPage}
-                  hasNextPage={data.meta.pagination.hasNextPage}
-                  hasPrevPage={data.meta.pagination.hasPrevPage}
-                />
-              )}
-            </div>
-          )}
+      {/* ── Main Content Layout ── */}
+      <div className="max-w-6xl mx-auto px-5 mt-8 flex flex-col md:flex-row gap-8 items-start">
+        
+        {/* Mobile Filter Toggle */}
+        <div className="w-full md:hidden flex justify-between items-center mb-2">
+          <p className="font-bold text-slate-700">{meta.total} results found</p>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 shadow-sm"
+          >
+            <SlidersHorizontal className="w-4 h-4" /> Filters
+          </button>
         </div>
 
-        {/* Advanced Filters Sidebar */}
-        <div className={`lg:block ${isFilterOpen ? 'block' : 'hidden'} animate-fade-in`}>
-          <div className="bg-white rounded-2xl p-6 sticky top-24 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-display font-black text-slate-900 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-indigo-600" /> Filters
-              </h3>
-              {!isFiltersEmpty && (
-                <button 
-                  onClick={() => setAdvancedFilters({ minCompletion: '', recommendationReady: false, company: '', passoutYear: '', isMentor: false, branch: '' })}
-                  className="text-[11px] uppercase tracking-wider text-indigo-600 hover:text-indigo-700 transition-colors font-bold bg-indigo-50 px-2.5 py-1 rounded-lg"
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
+        {/* ── Sidebar Filters ── */}
+        <div className={`w-full md:w-72 flex-shrink-0 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-8 ${showFilters ? 'block' : 'hidden md:block'}`}>
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <h2 className="font-black text-slate-900 flex items-center gap-2">
+              <Filter className="w-4 h-4 text-indigo-500" /> Filters
+            </h2>
+            <button onClick={clearFilters} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+              Clear All
+            </button>
+          </div>
 
-            <div className="space-y-6">
-              {/* Profile Completeness */}
-              <div className="space-y-3">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Min Profile Completion</label>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    step="10"
-                    value={advancedFilters.minCompletion || 0}
-                    onChange={e => setAdvancedFilters(prev => ({ ...prev, minCompletion: e.target.value }))}
-                    className="flex-1 accent-indigo-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span className="text-xs font-black text-indigo-600 w-10 text-right bg-indigo-50 px-1.5 py-0.5 rounded">{advancedFilters.minCompletion || 0}%</span>
-                </div>
-              </div>
-
-              {/* Company */}
-              <div className="space-y-3">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Company</label>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          {/* Role Filter */}
+          <div className="space-y-3">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-2">
+              <Users className="w-3.5 h-3.5" /> Role
+            </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="radio" name="role" value=""
+                  checked={filters.role === ''}
+                  onChange={() => updateFilter('role', '')}
+                  className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">All Roles</span>
+              </label>
+              {ROLES.map(role => (
+                <label key={role.value} className="flex items-center gap-3 cursor-pointer group">
                   <input
-                    type="text"
-                    value={advancedFilters.company}
-                    onChange={e => setAdvancedFilters(prev => ({ ...prev, company: e.target.value }))}
-                    placeholder="e.g. Google, Microsoft"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all outline-none"
+                    type="radio" name="role" value={role.value}
+                    checked={filters.role === role.value}
+                    onChange={() => updateFilter('role', role.value)}
+                    className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
                   />
-                </div>
-              </div>
-
-              {/* Branch */}
-              <div className="space-y-3">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Branch</label>
-                <div className="relative">
-                  <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={advancedFilters.branch || ''}
-                    onChange={e => setAdvancedFilters(prev => ({ ...prev, branch: e.target.value }))}
-                    placeholder="e.g. CSE, ECE"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Passout Year */}
-              <div className="space-y-3">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Passout Year</label>
-                <select
-                  value={advancedFilters.passoutYear}
-                  onChange={e => setAdvancedFilters(prev => ({ ...prev, passoutYear: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all outline-none appearance-none cursor-pointer"
-                >
-                  <option value="">Any Year</option>
-                  {[...Array(10)].map((_, i) => {
-                    const year = new Date().getFullYear() + 4 - i;
-                    return <option key={year} value={year}>{year}</option>;
-                  })}
-                </select>
-              </div>
-
-              {/* Toggles */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-5 h-5 rounded-[6px] flex items-center justify-center border transition-all ${advancedFilters.isMentor ? 'bg-indigo-600 border-indigo-600' : 'bg-slate-50 border-slate-300 group-hover:border-indigo-400'}`}>
-                    {advancedFilters.isMentor && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                  </div>
-                  <span className="text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors">Mentors Only</span>
-                  <input type="checkbox" className="hidden" checked={advancedFilters.isMentor} onChange={e => setAdvancedFilters(prev => ({ ...prev, isMentor: e.target.checked }))} />
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">{role.label}</span>
                 </label>
-
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-5 h-5 rounded-[6px] flex items-center justify-center border transition-all ${advancedFilters.recommendationReady ? 'bg-indigo-600 border-indigo-600' : 'bg-slate-50 border-slate-300 group-hover:border-indigo-400'}`}>
-                    {advancedFilters.recommendationReady && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                  </div>
-                  <span className="text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors">Recommendation Ready</span>
-                  <input type="checkbox" className="hidden" checked={advancedFilters.recommendationReady} onChange={e => setAdvancedFilters(prev => ({ ...prev, recommendationReady: e.target.checked }))} />
-                </label>
-              </div>
+              ))}
             </div>
           </div>
+
+          {/* Branch Filter */}
+          <div className="space-y-3">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-2">
+              <GraduationCap className="w-3.5 h-3.5" /> Branch / Department
+            </label>
+            <div className="relative">
+              <select
+                value={filters.branch}
+                onChange={(e) => updateFilter('branch', e.target.value)}
+                className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
+              >
+                <option value="">Any Branch</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="Civil">Civil</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Passout Year */}
+          <div className="space-y-3">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-2">
+              <GraduationCap className="w-3.5 h-3.5" /> Class Of (Year)
+            </label>
+            <input
+              type="number"
+              placeholder="e.g. 2024"
+              value={filters.passoutYear}
+              onChange={(e) => updateFilter('passoutYear', e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+          </div>
+
+          {/* Mentor Toggle */}
+          <div className="pt-4 border-t border-slate-100">
+            <label className="flex items-center justify-between cursor-pointer group">
+              <span className="text-sm font-black text-slate-800 flex items-center gap-2">
+                Available as Mentor
+              </span>
+              <div className="relative inline-block w-12 h-6 rounded-full bg-slate-200 transition-colors">
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={filters.isMentor === 'true'}
+                  onChange={(e) => updateFilter('isMentor', e.target.checked ? 'true' : '')}
+                />
+                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 shadow-sm peer-checked:translate-x-6 ${filters.isMentor === 'true' ? 'bg-indigo-600' : ''}`} />
+                <div className={`w-full h-full rounded-full transition-colors ${filters.isMentor === 'true' ? 'bg-indigo-200' : ''}`} />
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* ── Results Grid ── */}
+        <div className="flex-1 w-full space-y-6">
+          <div className="hidden md:flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <p className="font-bold text-slate-700">
+              Showing <span className="text-indigo-600">{users.length}</span> of {meta.total} results
+            </p>
+          </div>
+
+          {isPending ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 h-48 animate-pulse flex flex-col">
+                   <div className="flex gap-4">
+                     <div className="w-16 h-16 rounded-2xl bg-slate-200" />
+                     <div className="flex-1 space-y-2 py-2">
+                       <div className="h-4 w-1/2 bg-slate-200 rounded" />
+                       <div className="h-3 w-1/3 bg-slate-200 rounded" />
+                     </div>
+                   </div>
+                   <div className="mt-4 flex gap-2">
+                      <div className="h-6 w-16 bg-slate-200 rounded-lg" />
+                      <div className="h-6 w-20 bg-slate-200 rounded-lg" />
+                   </div>
+                </div>
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="p-8 text-center bg-red-50 rounded-2xl border border-red-100">
+              <p className="font-bold text-red-600">Failed to load search results. Please try again.</p>
+            </div>
+          ) : users.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="No people found"
+              message="Try adjusting your filters or search query to find who you're looking for."
+              actionLabel="Clear Filters"
+              onAction={clearFilters}
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {users.map((user) => (
+                  <SearchUserCard key={user.userId || user._id} user={user} />
+                ))}
+              </div>
+              
+              {meta.totalPages > 1 && (
+                <div className="flex justify-center mt-10">
+                  <Pagination 
+                    currentPage={meta.page}
+                    totalPages={meta.totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

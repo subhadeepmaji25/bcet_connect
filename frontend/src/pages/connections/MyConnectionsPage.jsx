@@ -20,9 +20,9 @@ function ConnectionCard({ conn, index, onMessage, onRemove, isMessaging, isRemov
   const personId = person?._id || person?.userId;
   const displayName = person?.fullName || person?.username || 'User';
 
-  // Mocking AI Data for Premium SaaS Feel
-  const networkingScore = Math.floor(Math.random() * 20) + 80; // 80-99
-  const commonInterests = ['React', 'System Design'].slice(0, (index % 2) + 1);
+  // Premium Features
+  const networkingScore = person?.searchScore ? Math.min(100, Math.round(person.searchScore)) : null;
+  const commonInterests = Array.isArray(person?.skills) && person.skills.length > 0 ? person.skills.slice(0, 2) : ['Tech', 'Networking'];
 
   return (
     <motion.div 
@@ -68,13 +68,15 @@ function ConnectionCard({ conn, index, onMessage, onRemove, isMessaging, isRemov
           </div>
 
           {/* AI Features Mock */}
-          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 mb-4">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Networking Score</span>
-              <span className="text-xs font-bold text-[#15803D]">{networkingScore}%</span>
+          {networkingScore !== null && (
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Networking Score</span>
+                <span className="text-xs font-bold text-[#15803D]">{networkingScore}%</span>
+              </div>
+              <p className="text-xs text-slate-500 truncate">Shared Interests: {commonInterests.join(', ')}</p>
             </div>
-            <p className="text-xs text-slate-500 truncate">Shared Interests: {commonInterests.join(', ')}</p>
-          </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -134,9 +136,9 @@ export default function MyConnectionsPage() {
       if (!conn) return false;
       const p = normalizeUser(conn.user || conn.connectedUser || conn);
       if (!p) return false;
-      const fName = p.fullName || '';
-      const uName = p.username || '';
-      const rLabel = ROLE_LABELS[p.role] || p.role || '';
+      const fName = String(p.fullName || '');
+      const uName = String(p.username || '');
+      const rLabel = String(ROLE_LABELS[p.role] || p.role || '');
       return fName.toLowerCase().includes(q) || 
              uName.toLowerCase().includes(q) || 
              rLabel.toLowerCase().includes(q);

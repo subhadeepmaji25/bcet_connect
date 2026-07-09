@@ -73,16 +73,26 @@ const buildMentorCard = ({ searchProfile = null, mentorProfile }) => {
   };
 };
 
-const attachMentorProfilesToSearchResults = async (searchResult) => {
+const attachMentorProfilesToSearchResults = async (searchResult, query = {}) => {
   const users = searchResult.users || [];
   if (users.length === 0) return { mentors: [], pagination: searchResult.pagination };
 
-  const mentorProfiles = await MentorProfile.find({
+  const filter = {
     userId: { $in: users.map((user) => user.userId).filter(Boolean) },
     mentorStatus: MENTOR_STATUS.ACTIVE,
-    verificationStatus: VERIFICATION_STATUS.VERIFIED,
     profileVisibility: PROFILE_VISIBILITY.PUBLIC
-  })
+  };
+
+  const isVerifiedParam = String(query.isVerified).toLowerCase();
+  if (isVerifiedParam === "true") {
+    filter.verificationStatus = VERIFICATION_STATUS.VERIFIED;
+  } else if (isVerifiedParam === "false") {
+    filter.verificationStatus = VERIFICATION_STATUS.PENDING;
+  }
+  // If query.isVerified is not specified, we don't strictly filter by VERIFIED, 
+  // letting all ACTIVE & PUBLIC mentors appear (or however the domain specifies).
+
+  const mentorProfiles = await MentorProfile.find(filter)
     .select(mentorProfilePublicFields)
     .lean();
 
@@ -237,12 +247,33 @@ const verifyMentor = async (mentorUserId, adminId) => {
 
 // FIXED — private mentors ab listing me nahi aayenge (searchService ko flag pass kiya)
 const listMentors = async (query, viewerId = null) => {
+  let allowedUserIds = null;
+  const isVerifiedParam = String(query.isVerified).toLowerCase();
+
+  // If domain or isVerified is provided, pre-filter MentorProfiles
+  if (query.domain || isVerifiedParam === "true" || isVerifiedParam === "false") {
+    const filter = {
+      mentorStatus: MENTOR_STATUS.ACTIVE,
+      profileVisibility: PROFILE_VISIBILITY.PUBLIC
+    };
+    if (query.domain) filter.domains = query.domain;
+    if (isVerifiedParam === "true") filter.verificationStatus = VERIFICATION_STATUS.VERIFIED;
+    if (isVerifiedParam === "false") filter.verificationStatus = VERIFICATION_STATUS.PENDING;
+
+    const profiles = await MentorProfile.find(filter).select("userId").lean();
+    allowedUserIds = profiles.map((p) => p.userId);
+
+    if (allowedUserIds.length === 0) {
+      return { mentors: [], pagination: { total: 0, page: 1, limit: query.limit || 10, totalPages: 0 } };
+    }
+  }
+
   const searchResult = await searchService.searchUsers(
-    { ...query, isMentor: true, mentorProfileVisibility: PROFILE_VISIBILITY.PUBLIC },
+    { ...query, isMentor: true, mentorProfileVisibility: PROFILE_VISIBILITY.PUBLIC, allowedUserIds },
     viewerId
   );
 
-  return attachMentorProfilesToSearchResults(searchResult);
+  return attachMentorProfilesToSearchResults(searchResult, query);
 };
 
 const getTopMentors = async ({ limit = 10 } = {}, viewerId = null) => {

@@ -1,14 +1,15 @@
 // backend/src/modules/users/services/profile.service.js
 //
-// NOTE on this update: no changes needed in this file for PROFILE_COMPLETED.
-// That event is fired from a single, central place — engines/user-sync/
-// syncUserIntelligence.js — not duplicated here or in skill/education/
-// experience/project/resume.service.js. This file already calls
-// syncUserIntelligence(userId) below, so it automatically gets the new
-// behavior for free. Keeping notify() out of this file is intentional:
-// if it lived here, the same few lines would need to be copy-pasted into
-// the other 5 user-services too, which is exactly the duplication the
-// sync layer was built to avoid.
+// NOTE: no changes needed for PROFILE_COMPLETED — that event fires from
+// engines/user-sync/syncUserIntelligence.js, called below via
+// syncUserIntelligence(userId). Not duplicated here.
+//
+// FIXED getPublicProfile(): getConnectionStatus() returns an OBJECT
+// ({ status, requestId? }), not a bare string. isConnected used to
+// compare the whole object against the literal string "connected",
+// which is never true — so a genuinely connected viewer was always
+// treated as NOT connected, and got shown the same limited/locked
+// profile card as a stranger for any private-visibility profile.
 
 const Profile = require("../models/Profile");
 const ApiError = require("../../../shared/errors/ApiError");
@@ -29,9 +30,6 @@ const updateProfile = async (userId, payload) => {
   profile.lastActiveAt = new Date();
   await profile.save();
 
-  // syncUserIntelligence() internally recalculates completion, rebuilds
-  // the search profile, and — if this update just pushed completion to
-  // 100% for the first time — fires PROFILE_COMPLETED. Nothing to do here.
   const syncResult = await syncUserIntelligence(userId);
 
   return { success: true, message: "Profile updated successfully", data: { profile, profileCompletion: syncResult.totalCompletion, recommendationEnabled: syncResult.recommendationEnabled, breakdown: syncResult.breakdown } };
@@ -71,8 +69,10 @@ const getPublicProfile = async (viewerId, targetUserId) => {
   let isConnected = false;
   if (viewerId && !isSelf) {
     const connectionService = require("../../connections/services/connection.service");
-    connectionStatus = await connectionService.getConnectionStatus(viewerId, targetUserId);
-    isConnected = connectionStatus === "connected";
+    const { RELATIONSHIP_STATUS } = require("../../connections/constants/connection.constants");
+    const result = await connectionService.getConnectionStatus(viewerId, targetUserId);
+    connectionStatus = result.status; // FIXED — unwrap the object to the plain status string
+    isConnected = connectionStatus === RELATIONSHIP_STATUS.CONNECTED;
   }
 
   const resultProfile = projectProfileByVisibility(profile, isSelf, isConnected);

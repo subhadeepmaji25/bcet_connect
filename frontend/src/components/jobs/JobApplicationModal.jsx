@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Zap, AlertTriangle, Info } from "lucide-react";
+import { Zap, Info } from "lucide-react";
 import toast from "react-hot-toast";
 import { getResumes } from "../../api/users.api";
 
@@ -15,23 +15,17 @@ export default function JobApplicationModal({ isOpen, onClose, job, onConfirm })
   // Filter out soft-deleted resumes
   const resumes = (resData?.data?.resumes || resData?.data || []).filter(r => !r.isDeleted);
 
-  // Auto-select default resume
-  useEffect(() => {
-    if (resumes.length > 0 && !selectedResumeId) {
-      const defaultRes = resumes.find(r => r.isDefault) || resumes[0];
-      setSelectedResumeId(defaultRes._id);
-    }
-  }, [resumes, selectedResumeId]);
+  const actualSelectedId = selectedResumeId || (resumes.length > 0 ? (resumes.find(r => r.isDefault) || resumes[0])._id : "");
 
   if (!isOpen) return null;
 
   const handleApply = async () => {
-    if (!selectedResumeId) {
+    if (!actualSelectedId) {
       toast.error("Please select a resume");
       return;
     }
     setIsApplying(true);
-    await onConfirm(job._id, selectedResumeId, coverLetter);
+    await onConfirm(job._id, actualSelectedId, coverLetter);
     setIsApplying(false);
     onClose();
   };
@@ -70,8 +64,8 @@ export default function JobApplicationModal({ isOpen, onClose, job, onConfirm })
           ) : (
             <div className="space-y-3 mb-6">
               {resumes.map(res => (
-                <label key={res._id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedResumeId === res._id ? 'border-[#635BFF] bg-[#635BFF]/5 shadow-[0_0_0_1px_#635BFF]' : 'border-slate-200 hover:border-slate-300'}`}>
-                  <input type="radio" name="resume" value={res._id} checked={selectedResumeId === res._id} onChange={(e) => setSelectedResumeId(e.target.value)} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
+                <label key={res._id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${actualSelectedId === res._id ? 'border-[#635BFF] bg-[#635BFF]/5 shadow-[0_0_0_1px_#635BFF]' : 'border-slate-200 hover:border-slate-300'}`}>
+                  <input type="radio" name="resume" value={res._id} checked={actualSelectedId === res._id} onChange={(e) => setSelectedResumeId(e.target.value)} className="w-4 h-4 text-[#635BFF] border-slate-300 focus:ring-[#635BFF]" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{res.fileName || res.originalName || 'Resume.pdf'}</p>
                     <div className="flex gap-2 items-center mt-0.5">
@@ -95,7 +89,7 @@ export default function JobApplicationModal({ isOpen, onClose, job, onConfirm })
         </div>
         <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/50 flex gap-3 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-          <button onClick={handleApply} disabled={isApplying || resumes.length === 0 || !selectedResumeId} className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#635BFF] hover:bg-[#524be3] shadow-[0_4px_14px_0_rgba(99,91,255,0.39)] rounded-xl transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2">
+          <button onClick={handleApply} disabled={isApplying || resumes.length === 0 || !actualSelectedId} className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#635BFF] hover:bg-[#524be3] shadow-[0_4px_14px_0_rgba(99,91,255,0.39)] rounded-xl transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2">
             {isApplying ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-4 h-4" />}
             Submit Application
           </button>

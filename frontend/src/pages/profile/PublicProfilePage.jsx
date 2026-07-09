@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { getPublicProfile, getPublicProjects } from '../../api/users.api';
 import { 
-  sendConnectionRequest, getConnectionStatus, removeConnection,
+  sendConnectionRequest, removeConnection,
   cancelConnectionRequest, acceptConnectionRequest, rejectConnectionRequest
 } from '../../api/connections.api';
 import { startConversation } from '../../api/communication.api';

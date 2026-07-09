@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  Bell, Check, Archive, Trash2, Filter, CheckCheck, ArchiveX,
+  Bell, Check, Archive, Trash2, CheckCheck,
   Shield, User, BriefcaseIcon, FileText, GraduationCap, Users,
-  MessageCircle, AlertCircle, ChevronRight, RefreshCw, Inbox
+  MessageCircle, AlertCircle, RefreshCw, Inbox
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -13,7 +13,6 @@ import {
   markAsRead, archiveNotification, deleteNotification,
   markAllAsRead, archiveAllNotifications, deleteAllNotifications
 } from '../../api/notification.api';
-import { useAuth } from '../../hooks/useAuth';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -50,7 +49,7 @@ const ACTION_ROUTES = {
   OPEN_JOB:          (notif) => notif.meta?.jobId ? `/jobs/${notif.meta.jobId}` : '/jobs',
   OPEN_PROFILE:      () => '/profile',
   OPEN_CHAT:         (notif) => notif.meta?.conversationId ? `/chat/${notif.meta.conversationId}` : '/chat',
-  OPEN_MENTORSHIP:   (notif, user) => {
+  OPEN_MENTORSHIP:   (notif) => {
     if (notif.event === 'mentorship.request.created') return '/mentors/requests/received';
     if (notif.event === 'mentorship.request.accepted' || notif.event === 'mentorship.session.scheduled') return '/mentors/requests/my';
     return '/mentors';
@@ -62,8 +61,8 @@ const ACTION_ROUTES = {
   OPEN_NOTIFICATION: () => '/notifications',
 };
 
-const timeAgo = (dateStr) => {
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+const timeAgo = (dateStr, now = Date.now()) => {
+  const diff = Math.floor((now - new Date(dateStr)) / 1000);
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -72,11 +71,11 @@ const timeAgo = (dateStr) => {
 };
 
 // ─── Individual Notification Card ─────────────────────────────────────────────
-const NotifCard = ({ notif, onMarkRead, onArchive, onDelete, onNavigate, user }) => {
+const NotifCard = ({ notif, onMarkRead, onArchive, onDelete, onNavigate, now }) => {
   const Icon = CATEGORY_ICON_MAP[notif.category] || Bell;
   const style = TYPE_STYLES[notif.type] || TYPE_STYLES.info;
   const isUnread = notif.status === 'unread';
-  const route = ACTION_ROUTES[notif.actionType]?.(notif, user);
+  const route = ACTION_ROUTES[notif.actionType]?.(notif);
 
   return (
     <motion.div
@@ -107,7 +106,7 @@ const NotifCard = ({ notif, onMarkRead, onArchive, onDelete, onNavigate, user })
           <p className={`text-[15px] font-black text-slate-900 leading-snug tracking-tight ${isUnread ? 'text-indigo-950' : ''}`}>
             {notif.title}
           </p>
-          <span className="text-[10px] text-slate-400 font-bold shrink-0 mt-0.5 bg-slate-100/50 px-2 py-0.5 rounded-full">{timeAgo(notif.createdAt)}</span>
+          <span className="text-[10px] text-slate-400 font-bold shrink-0 mt-0.5 bg-slate-100/50 px-2 py-0.5 rounded-full">{timeAgo(notif.createdAt, now)}</span>
         </div>
         <p className="text-[13px] text-slate-500 font-medium mt-1 leading-relaxed">{notif.body}</p>
         
@@ -157,9 +156,16 @@ const NotifCard = ({ notif, onMarkRead, onArchive, onDelete, onNavigate, user })
 export default function NotificationsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user } = useAuth();
+
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeStatus, setActiveStatus] = useState(null); // null = unread+read, 'archived'
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
 
   const queryParams = {
     limit: 30,
@@ -328,7 +334,7 @@ export default function NotificationsPage() {
                 <NotifCard
                   key={notif._id}
                   notif={notif}
-                  user={user}
+                  now={now}
                   onMarkRead={(id) => markReadMut.mutate(id)}
                   onArchive={(id) => archiveMut.mutate(id)}
                   onDelete={(id) => { if (window.confirm('Delete this notification?')) deleteMut.mutate(id); }}

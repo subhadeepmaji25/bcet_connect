@@ -6,7 +6,7 @@ import {
   ArrowLeft, Briefcase, Building2, MapPin, Clock, Star, Users,
   Zap, ExternalLink, CheckCircle, XCircle, ShieldCheck, BarChart2,
   Calendar, Globe, BookOpen, DollarSign, Eye, ChevronRight,
-  Award, GraduationCap, Lock, Send
+  Award, GraduationCap, Lock
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { 
@@ -14,7 +14,6 @@ import {
   closeJob, archiveJob, featureJob, verifyCompany, reopenJob 
 } from "../../api/jobs.api";
 import { getJobMatch } from "../../api/recommendation.api";
-import { getResumes } from "../../api/users.api";
 import { useAuth } from "../../hooks/useAuth";
 import { JOB_CATEGORY_LABELS, EMPLOYMENT_TYPE_LABELS } from "../../constants/appConstants";
 import JobApplicationModal from "../../components/jobs/JobApplicationModal";
@@ -220,8 +219,6 @@ export default function JobDetailPage() {
   }
 
   const job = data?.data?.job || data?.data;
-  const allResumes = resumeData?.data?.resumes || [];
-  const resumes = allResumes.filter(r => !r.isDeleted);
   const isExpired = job.deadline && new Date(job.deadline) < new Date();
   const canApply = ["student", "alumni"].includes(user?.role) && !isExpired;
   const canAdmin = user?.role === "admin";

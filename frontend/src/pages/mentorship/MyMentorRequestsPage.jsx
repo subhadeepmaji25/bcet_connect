@@ -1,124 +1,103 @@
-// src/pages/mentorship/MyMentorRequestsPage.jsx
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Clock, XCircle, GraduationCap, MessageSquare, Calendar, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Clock, CheckCircle2, XCircle, Calendar, MessageSquare, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getMyRequests, cancelRequest, getMySessions, cancelSession, createReview } from '../../api/mentorship.api';
-import { startConversation } from '../../api/communication.api';
-import { REQUEST_STATUS_COLORS, DOMAIN_LABELS } from '../../constants/appConstants';
+import { getMyRequests, cancelRequest } from '../../api/mentorship.api';
 import Avatar from '../../components/ui/Avatar';
-import Modal from '../../components/ui/Modal';
-import { normalizeUser } from '../../utils/normalize';
-import { useAuth } from '../../hooks/useAuth';
 
 export default function MyMentorRequestsPage() {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [sessionRole, setSessionRole] = useState('all');
-  const [reviewFor, setReviewFor] = useState(null);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, feedback: '', anonymous: false });
-  const { data, isPending } = useQuery({ queryKey: ['my-mentor-requests'], queryFn: getMyRequests });
-  const { data: sessionsData } = useQuery({ 
-    queryKey: ['my-mentor-sessions', sessionRole], 
-    queryFn: () => getMySessions({ limit: 10, as: sessionRole === 'all' ? undefined : sessionRole }) 
-  });
-  const requests = data?.data?.requests || [];
-  const sessions = sessionsData?.data?.sessions || [];
-
-  const msgMut = useMutation({
-    mutationFn: (recipientId) => startConversation({ recipientId }),
-    onSuccess: (res) => {
-      const convId = res?.data?.conversation?._id || res?.data?._id;
-      if (convId) navigate(`/chat/${convId}`);
-    },
-    onError: (e) => toast.error(e?.message || 'Failed to start chat'),
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['myMentorRequests'],
+    queryFn: async () => {
+      const res = await getMyRequests();
+      return res.data;
+    }
   });
 
-  const cancelMut = useMutation({
+  const cancelMutation = useMutation({
     mutationFn: cancelRequest,
-    onSuccess: () => { toast.success('Request cancelled'); qc.invalidateQueries(['my-mentor-requests']); },
-    onError: (e) => toast.error(e?.message || 'Failed'),
-  });
-
-  const cancelSessionMut = useMutation({
-    mutationFn: (sessionId) => cancelSession(sessionId, { reason: 'Cancelled by student' }),
-    onSuccess: () => { toast.success('Session cancelled'); qc.invalidateQueries({ queryKey: ['my-mentor-sessions'] }); },
-    onError: (e) => toast.error(e?.message || 'Failed to cancel session'),
-  });
-
-  const reviewMut = useMutation({
-    mutationFn: () => createReview(reviewFor._id, {
-      rating: Number(reviewForm.rating),
-      feedback: reviewForm.feedback,
-      anonymous: reviewForm.anonymous,
-    }),
     onSuccess: () => {
-      toast.success('Review submitted');
-      setReviewFor(null);
-      setReviewForm({ rating: 5, feedback: '', anonymous: false });
-      qc.invalidateQueries({ queryKey: ['my-mentor-sessions'] });
+      toast.success('Request cancelled');
+      queryClient.invalidateQueries(['myMentorRequests']);
     },
-    onError: (e) => toast.error(e?.message || 'Failed to submit review'),
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to cancel')
   });
+
+  if (isLoading) return <div className="min-h-screen bg-slate-50 p-8 flex justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" /></div>;
+
+  const requests = data?.requests || [];
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <h1 className="font-display text-2xl font-bold text-slate-100 flex items-center gap-2">
-        <Clock className="w-6 h-6 text-primary-400" /> My Mentorship Requests
-      </h1>
+    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">My Mentorship Requests</h1>
+          <p className="text-slate-500 mt-2">Track the status of requests you've sent to mentors.</p>
+        </div>
 
-      {sessions.length > 0 && (
-        <div className="glass-card p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <h2 className="section-title flex items-center gap-2 m-0"><Calendar className="w-4 h-4" /> My Sessions</h2>
-            {user?.role === 'alumni' && (
-              <div className="flex bg-white/5 rounded-lg p-1 border border-white/10 w-fit">
-                {['all', 'student', 'mentor'].map(role => (
-                  <button 
-                    key={role} 
-                    onClick={() => setSessionRole(role)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md capitalize transition-colors ${sessionRole === role ? 'bg-primary-500/20 text-primary-300 border border-primary-500/30' : 'text-slate-400 hover:text-slate-200'}`}
-                  >
-                    {role === 'all' ? 'All' : `As ${role}`}
-                  </button>
-                ))}
-              </div>
-            )}
+        {requests.length === 0 ? (
+          <div className="bg-white rounded-3xl p-16 text-center border border-slate-100">
+            <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-slate-900">No requests sent</h3>
+            <p className="text-slate-500 mt-2">Find a mentor and send a request to get started.</p>
+            <Link to="/mentors" className="inline-block mt-6 px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-colors">
+              Find Mentors
+            </Link>
           </div>
-          <div className="space-y-3">
-            {sessions.map((session) => {
-              if (!session) return null;
-              const mentor = normalizeUser(session.mentorId);
-              const starts = new Date(session.scheduledAt);
+        ) : (
+          <div className="grid gap-6">
+            {requests.map(req => {
+              // Fix: correct path nested in profileId
+              const mentor = req.mentorId?.profileId || {};
+              const fullName = mentor.fullName || "Unknown Mentor";
+              const avatar = mentor.avatar || "";
+              const statusColor = {
+                pending: 'text-amber-600 bg-amber-50',
+                accepted: 'text-green-600 bg-green-50',
+                rejected: 'text-red-600 bg-red-50',
+                cancelled: 'text-slate-600 bg-slate-100'
+              }[req.status] || 'text-slate-600 bg-slate-100';
+
               return (
-                <div key={session._id} className="rounded-2xl border border-white/8 bg-white/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-100 text-sm">{session.topic}</p>
-                    <p className="text-xs text-slate-400">
-                      {starts.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {session.duration} min · {mentor?.fullName || mentor?.username || 'Mentor'}
-                    </p>
-                    <span className={`mt-2 inline-flex badge ${session.status === 'completed' ? 'badge-success' : session.status === 'cancelled' ? 'badge-danger' : 'badge-info'}`}>
-                      {session.status}
-                    </span>
+                <div key={req._id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row gap-6">
+                  <div className="shrink-0">
+                    <Avatar src={avatar} alt={fullName} size="lg" />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {session.status === 'scheduled' && session.meetingLink && (
-                      <a href={session.meetingLink} target="_blank" rel="noreferrer" className="btn-primary text-xs py-2 px-3">Join</a>
-                    )}
-                    {session.status === 'scheduled' && (
-                      <button
-                        onClick={() => { if (window.confirm('Cancel this session?')) cancelSessionMut.mutate(session._id); }}
-                        className="btn-ghost text-xs py-2 px-3 hover:text-red-400"
+                  
+                  <div className="flex-1 space-y-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">{fullName}</h3>
+                        <p className="text-sm font-medium text-slate-500 capitalize">{req.topic.replace('-', ' ')}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${statusColor}`}>
+                        {req.status}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <p className="text-sm text-slate-700">{req.message}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-xs font-bold text-slate-500">
+                      <div className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(req.createdAt).toLocaleDateString()}</div>
+                      {req.preferredDomain && <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> {req.preferredDomain}</div>}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex flex-col justify-between items-end gap-4 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
+                    <Link to={`/mentors/${req.mentorId?._id}`} className="text-sm font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                      View Profile <ChevronRight className="w-4 h-4" />
+                    </Link>
+                    
+                    {req.status === 'pending' && (
+                      <button 
+                        onClick={() => cancelMutation.mutate(req._id)}
+                        disabled={cancelMutation.isPending}
+                        className="text-sm font-bold text-red-500 hover:text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
                       >
-                        Cancel
-                      </button>
-                    )}
-                    {session.status === 'completed' && (
-                      <button onClick={() => setReviewFor(session)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5" /> Review
+                        Cancel Request
                       </button>
                     )}
                   </div>
@@ -126,111 +105,8 @@ export default function MyMentorRequestsPage() {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {isPending ? (
-        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="glass-card p-4 skeleton h-20" />)}</div>
-      ) : requests.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <GraduationCap className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-slate-300 font-semibold">No requests sent</h3>
-          <p className="text-slate-500 text-sm mb-4">Find a mentor and request a session!</p>
-          <Link to="/mentors" className="btn-primary">Browse Mentors</Link>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {requests.map(req => {
-            if (!req) return null;
-            const mentor = normalizeUser(req.mentorId);
-            return (
-            <div key={req._id} className="glass-card p-5 hover:border-white/15 transition-all">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <Avatar src={mentor?.avatar} name={mentor?.fullName || mentor?.username || 'Mentor'} size="md" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <span className={`badge ${REQUEST_STATUS_COLORS[req.status] || 'badge-neutral'}`}>{req.status}</span>
-                    </div>
-                    <p className="font-semibold text-slate-100 text-sm">{req.topic}</p>
-                    <p className="text-slate-400 text-xs">To: {mentor?.fullName || mentor?.username || 'Mentor'}</p>
-                    {req.preferredDomain && (
-                      <p className="text-slate-500 text-xs mt-0.5">Domain: {DOMAIN_LABELS[req.preferredDomain] || req.preferredDomain}</p>
-                    )}
-                    <p className="text-xs text-slate-600 mt-1">{new Date(req.createdAt).toLocaleDateString()}</p>
-                  </div>
-                </div>
-
-                {req.status === 'pending' && (
-                  <button
-                    onClick={() => { if (window.confirm('Cancel this request?')) cancelMut.mutate(req._id); }}
-                    disabled={cancelMut.isPending}
-                    className="btn-ghost text-xs py-1.5 px-3 hover:text-red-400 flex items-center gap-1 flex-shrink-0"
-                  >
-                    <XCircle className="w-3.5 h-3.5" /> Cancel
-                  </button>
-                )}
-              </div>
-              {req.message && (
-                <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-white/8 italic line-clamp-2">"{req.message}"</p>
-              )}
-              {req.status === 'accepted' && (
-                <div className="mt-4 pt-4 border-t border-white/8">
-                  <button
-                    onClick={() => msgMut.mutate(req.mentorId?._id || req.mentorId)}
-                    disabled={msgMut.isPending}
-                    className="btn-primary w-full flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(14,165,233,0.4)]"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    {msgMut.isPending ? 'Starting Chat...' : 'Message Mentor'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )})}
-        </div>
-      )}
-
-      <Modal
-        open={!!reviewFor}
-        onClose={() => setReviewFor(null)}
-        title="Review mentorship session"
-        footer={
-          <>
-            <button type="button" onClick={() => setReviewFor(null)} className="btn-ghost">Cancel</button>
-            <button type="button" disabled={reviewMut.isPending} onClick={() => reviewMut.mutate()} className="btn-primary">
-              {reviewMut.isPending ? 'Submitting...' : 'Submit Review'}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="label">Rating</label>
-            <select className="input-field" value={reviewForm.rating} onChange={(e) => setReviewForm((f) => ({ ...f, rating: e.target.value }))}>
-              {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">Feedback</label>
-            <textarea
-              rows={4}
-              className="input-field resize-none"
-              placeholder="What helped you most?"
-              value={reviewForm.feedback}
-              onChange={(e) => setReviewForm((f) => ({ ...f, feedback: e.target.value }))}
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-            <input
-              type="checkbox"
-              checked={reviewForm.anonymous}
-              onChange={(e) => setReviewForm((f) => ({ ...f, anonymous: e.target.checked }))}
-            />
-            Post anonymously
-          </label>
-        </div>
-      </Modal>
+        )}
+      </div>
     </div>
   );
 }

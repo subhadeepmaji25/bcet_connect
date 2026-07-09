@@ -27,7 +27,7 @@ const CATEGORY_LABELS = {
 };
 
 export default function DiscoverCommunitiesPage() {
-  const { user } = useAuth();
+  const {} = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");

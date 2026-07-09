@@ -1,4 +1,10 @@
 // backend/src/modules/mentorship/constants/mentor.constants.js
+//
+// UPDATED: added SESSION_STATUS.LIVE for the new scheduled → live →
+// completed auto-transition lifecycle (via scheduleMentorSessionCron.js).
+// SESSION_TERMINAL_STATUSES unchanged — "live" is NOT terminal, a session
+// can still be cancelled or auto-completed while live.
+
 const MENTOR_ELIGIBLE_ROLES = ["faculty", "alumni"];
 const MENTORSHIP_REQUESTER_ROLES = ["student", "alumni"];
 
@@ -16,7 +22,17 @@ const REQUEST_STATUS_VALUES = Object.values(REQUEST_STATUS);
 const REQUEST_TERMINAL_STATUSES = [REQUEST_STATUS.REJECTED, REQUEST_STATUS.CANCELLED];
 const CANCELLABLE_REQUEST_STATUSES = [REQUEST_STATUS.PENDING];
 
-const SESSION_STATUS = { SCHEDULED: "scheduled", COMPLETED: "completed", CANCELLED: "cancelled", NO_SHOW: "no_show" };
+// NEW: LIVE inserted between SCHEDULED and COMPLETED. A session is
+// "live" for the exact window [scheduledAt, endsAt) — set by the cron,
+// never by a client request, since the client can't be trusted to know
+// the current server time accurately.
+const SESSION_STATUS = {
+  SCHEDULED: "scheduled",
+  LIVE: "live",           // NEW
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  NO_SHOW: "no_show"
+};
 const SESSION_STATUS_VALUES = Object.values(SESSION_STATUS);
 const SESSION_TERMINAL_STATUSES = [SESSION_STATUS.COMPLETED, SESSION_STATUS.CANCELLED, SESSION_STATUS.NO_SHOW];
 

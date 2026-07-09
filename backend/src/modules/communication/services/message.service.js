@@ -1,31 +1,33 @@
 // backend/src/modules/communication/services/message.service.js
 //
-// Owns Message lifecycle only. Deliberately never imports Mentorship,
-// Connections, or canCommunicate() — by the time a message is being
-// sent, a Conversation already exists, and its existence IS the proof
-// that permission was granted. Re-checking permission on every message
-// would be redundant work and, worse, would let this file drift into
-// knowing business rules it has no reason to know.
+// Owns Message lifecycle only. Historically this file never imported
+// Mentorship, Connections, or canCommunicate() — because a Conversation's
+// existence WAS proof enough that permission was granted.
 //
-// FIX: deleteMessage() now re-syncs Conversation.lastMessageText when
-// the deleted message was the conversation's latest one — see the
-// comment directly above deleteMessage() for the full reasoning.
+// UPDATED — that's no longer sufficient for mentorship conversations.
+// A mentorship Conversation exists permanently once created, but is only
+// meant to be SENDABLE during an active session's live time-window — a
+// TEMPORAL constraint that changes on its own without any user action,
+// unlike a relationship-permission check. So sendMessage() now makes one
+// narrow exception: it asks the engine layer's
+// isMentorshipConversationCurrentlySendable() (a time-window check, NOT
+// a business-rule/relationship check) before creating the message.
+// getMessages()/markAsRead()/editMessage()/deleteMessage() are
+// deliberately NOT gated — history stays fully readable forever, only
+// new sends are blocked outside a live session window. This matches the
+// project requirement: "session end ho then mentor ko koi message nahi
+// jayega, slot time ke baad messages/attachments save rahenge sirf
+// (history), chatting band."
 //
-// NEW: notify() integration on sendMessage() → MESSAGE_RECEIVED, sent
+// FIX (unchanged from before): deleteMessage() now re-syncs
+// Conversation.lastMessageText when the deleted message was the
+// conversation's latest one.
+//
+// notify() integration on sendMessage() → MESSAGE_RECEIVED, sent
 // to the OTHER participant, never the sender. Recipient is resolved
-// from conversation.participants (confirmed field name in
-// modules/communication/models/Conversation.js) by excluding senderId
-// — this works for any 2-participant conversation type (DIRECT or
-// MENTORSHIP) without needing to know which one it is.
-//
-// CAVEAT — please verify before relying on this: this assumes
-// assertParticipant() returns the full conversation document including
-// the `participants` array (not a lean/projected doc that dropped it,
-// and not just a boolean). I haven't seen conversation.service.js's
-// exact implementation, only its function signature. If
-// `conversation.participants` comes back undefined at runtime, either
-// widen assertParticipant's projection to include participants, or
-// fetch the conversation separately here with `.select("participants")`.
+// from conversation.participants by excluding senderId — works for any
+// 2-participant conversation type (DIRECT or MENTORSHIP) without
+// needing to know which one it is.
 
 const Message = require("../models/Message");
 const User = require("../../auth/models/User");
@@ -34,6 +36,7 @@ const conversationService = require("./conversation.service");
 const { MESSAGE_TYPES, ATTACHMENT_TYPES } = require("../constants/communication.constants");
 const { notify } = require("../../notification/listeners/notification.listener");
 const { NOTIFICATION_EVENTS } = require("../../notification/constants/notification.constants");
+const { isMentorshipConversationCurrentlySendable } = require("../../../engines/communication-access"); // NEW
 
 // UPGRADED: now distinguishes voice_note/video instead of collapsing
 // everything non-image into DOCUMENT. Mixed-type attachment arrays
@@ -79,6 +82,14 @@ const getUsernameSafe = async (userId) => {
 const sendMessage = async (conversationId, senderId, payload) => {
   const conversation = await conversationService.assertParticipant(conversationId, senderId);
 
+  // NEW: mentorship conversations are only sendable during an active
+  // session's live window. Returns true unconditionally for non-mentorship
+  // conversation types (direct, community), so this is a no-op for them.
+  const sendable = await isMentorshipConversationCurrentlySendable(conversation);
+  if (!sendable) {
+    throw ApiError.forbidden("Messaging is only available during an active mentorship session.");
+  }
+
   if (payload.replyTo) {
     const original = await Message.findOne({ _id: payload.replyTo, conversationId, isDeleted: false });
     if (!original) throw ApiError.badRequest("The message you are replying to does not exist");
@@ -121,6 +132,7 @@ const sendMessage = async (conversationId, senderId, payload) => {
   return { success: true, message: "Message sent", data: { message } };
 };
 
+// UNCHANGED — history stays fully readable regardless of session window.
 const getMessages = async (conversationId, userId, { page = 1, limit = 30 } = {}) => {
   await conversationService.assertParticipant(conversationId, userId);
 

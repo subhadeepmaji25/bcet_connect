@@ -73,7 +73,6 @@ const messageLimiter = createLimiter(
   "You're sending messages too fast. Please slow down."
 );
 
-// ── NEW ──────────────────────────────────────────────
 // Community write actions — create community, join, create join-request,
 // create post. Grouped under one limiter since all four are moderate-
 // frequency, spammable-if-unguarded writes (same tier as job actions),
@@ -85,6 +84,18 @@ const communityActionLimiter = createLimiter(
   "Too many community actions. Try again in 1 hour."
 );
 
+// ── NEW ──────────────────────────────────────────────
+// Feed write actions — create post, create comment. Same tier as
+// communityActionLimiter (moderate-frequency, spammable-if-unguarded
+// writes), slightly looser cap since a global feed with connections +
+// comments naturally sees a bit more legitimate write volume per hour
+// than a single community's action set.
+const feedActionLimiter = createLimiter(
+  60,
+  30,
+  "Too many feed actions. Try again in 1 hour."
+);
+
 module.exports = {
   loginLimiter,
   registerLimiter,
@@ -94,5 +105,6 @@ module.exports = {
   mentorshipRequestLimiter,
   connectionRequestLimiter,
   messageLimiter,
-  communityActionLimiter // NEW
+  communityActionLimiter,
+  feedActionLimiter // NEW
 };

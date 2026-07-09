@@ -20,10 +20,14 @@ const communicationRoutes = require("../modules/communication/routes/communicati
 // it's a cross-cutting concern consumed by every other module, not a
 // business domain itself.
 const notificationRoutes = require("../modules/notification/routes/notification.routes");
-// NEW: Communities — mounted last as it's the newest and most-dependent
+// Communities — mounted after Notification as it's the most-dependent
 // module (relies on Users, Communication, Notification, Search all
 // already being registered/available).
 const communityRoutes = require("../modules/communities/routes/community.routes");
+// NEW: Feed — mounted last. Reads from Connections (candidate authors)
+// and emits into Notification (mention/comment/like events), so both
+// must already be registered above it.
+const feedRoutes = require("../modules/feed/routes/feed.routes");
 
 // ─────────────────────────────────────────
 // Register All API Routes
@@ -63,6 +67,9 @@ const registerRoutes = (app) => {
 
   // Communities (Feed + Chat hybrid — reuses Communication + Notification)
   apiRouter.use("/communities", communityRoutes);
+
+  // Feed (global feed — reuses Connections + Notification)
+  apiRouter.use("/feed", feedRoutes);
 
   // Mount API
   app.use(

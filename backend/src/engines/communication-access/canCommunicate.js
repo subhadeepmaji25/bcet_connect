@@ -4,18 +4,24 @@ const hasAcceptedMentorship = async (userIdOne, userIdTwo) => {
   return mentorRequestService.hasAcceptedMentorship(userIdOne, userIdTwo);
 };
 
+// FIXED: getConnectionStatus() returns an OBJECT ({ status, requestId? }),
+// not a bare string. This function used to compare the whole object
+// directly against the RELATIONSHIP_STATUS.CONNECTED string constant,
+// which is never === true in JS — so canCommunicate() silently treated
+// EVERY connected pair as unconnected, permanently blocking direct
+// messaging between users who were genuinely connected in the database.
 const hasActiveConnection = async (userIdOne, userIdTwo) => {
   const connectionService = require("../../modules/connections/services/connection.service");
   const { RELATIONSHIP_STATUS } = require("../../modules/connections/constants/connection.constants");
-  const status = await connectionService.getConnectionStatus(userIdOne, userIdTwo);
+  const { status } = await connectionService.getConnectionStatus(userIdOne, userIdTwo);
   return status === RELATIONSHIP_STATUS.CONNECTED;
 };
 
-// WIRED — Communities module now exists. Lazy-required (function-scoped
-// require, not top-of-file) to avoid a circular dependency: this engine
-// is itself required by Communication module, and CommunityMember could
-// theoretically end up importing something that chains back here.
-// Same defensive pattern already used for mentorship/connections above.
+// Communities module — lazy-required (function-scoped require, not
+// top-of-file) to avoid a circular dependency: this engine is itself
+// required by the Communication module, and CommunityMember could
+// theoretically chain back here. Same defensive pattern already used
+// for mentorship/connections above.
 const isSameCommunity = async (userIdOne, userIdTwo) => {
   const CommunityMember = require("../../modules/communities/models/CommunityMember");
 

@@ -1,11 +1,17 @@
 // backend/src/modules/notification/constants/notification.constants.js
 //
-// UPDATED: Added COMMUNITY_ANNOUNCEMENT event + metadata. Previously,
-// community.service.js's announcement post-type had no dedicated
-// broadcast event — only @mentioned users got notified even when a
-// leader posted an official announcement meant for every member. This
-// event is now the one communityPost.service.js fires for the whole
-// member list when postType === "announcement".
+// UPDATED (this pass): Added FEED_MENTIONED, FEED_COMMENT_RECEIVED,
+// FEED_POST_LIKED events + FEED category + OPEN_FEED_POST action type +
+// metadata + expiry. Feed module reuses the exact same event → category
+// → metadata → expiry wiring pattern Communities already established —
+// no new plumbing, only new entries.
+//
+// (kept from earlier pass) Added COMMUNITY_ANNOUNCEMENT event +
+// metadata. Previously, community.service.js's announcement post-type
+// had no dedicated broadcast event — only @mentioned users got notified
+// even when a leader posted an official announcement meant for every
+// member. This event is now the one communityPost.service.js fires for
+// the whole member list when postType === "announcement".
 
 const NOTIFICATION_EVENTS = Object.freeze({
   USER_REGISTERED: "auth.user.registered",
@@ -38,7 +44,11 @@ const NOTIFICATION_EVENTS = Object.freeze({
   COMMUNITY_JOIN_REQUEST_REJECTED: "community.join_request.rejected",
   MENTIONED: "community.post.mentioned",
   COMMUNITY_COMMENT_RECEIVED: "community.comment.received",
-  COMMUNITY_ANNOUNCEMENT: "community.post.announcement"
+  COMMUNITY_ANNOUNCEMENT: "community.post.announcement",
+  // NEW — Feed module (Phase 1)
+  FEED_MENTIONED: "feed.post.mentioned",
+  FEED_COMMENT_RECEIVED: "feed.comment.received",
+  FEED_POST_LIKED: "feed.post.liked"
 });
 
 const NOTIFICATION_EVENT_VALUES = Object.freeze(Object.values(NOTIFICATION_EVENTS));
@@ -52,7 +62,9 @@ const NOTIFICATION_CATEGORY = Object.freeze({
   CONNECTION: "CONNECTION",
   COMMUNICATION: "COMMUNICATION",
   SYSTEM: "SYSTEM",
-  COMMUNITY: "COMMUNITY"
+  COMMUNITY: "COMMUNITY",
+  // NEW — Feed module (Phase 1)
+  FEED: "FEED"
 });
 
 const NOTIFICATION_CATEGORY_VALUES = Object.freeze(Object.values(NOTIFICATION_CATEGORY));
@@ -97,7 +109,9 @@ const ACTION_TYPE = Object.freeze({
   OPEN_MENTORSHIP: "OPEN_MENTORSHIP",
   OPEN_CONNECTION: "OPEN_CONNECTION",
   OPEN_NOTIFICATION: "OPEN_NOTIFICATION",
-  OPEN_COMMUNITY: "OPEN_COMMUNITY"
+  OPEN_COMMUNITY: "OPEN_COMMUNITY",
+  // NEW — Feed module (Phase 1)
+  OPEN_FEED_POST: "OPEN_FEED_POST"
 });
 
 const CATEGORY_ICON_MAP = Object.freeze({
@@ -109,7 +123,9 @@ const CATEGORY_ICON_MAP = Object.freeze({
   [NOTIFICATION_CATEGORY.CONNECTION]: "users",
   [NOTIFICATION_CATEGORY.COMMUNICATION]: "message-circle",
   [NOTIFICATION_CATEGORY.SYSTEM]: "bell",
-  [NOTIFICATION_CATEGORY.COMMUNITY]: "users-round"
+  [NOTIFICATION_CATEGORY.COMMUNITY]: "users-round",
+  // NEW — Feed module (Phase 1)
+  [NOTIFICATION_CATEGORY.FEED]: "rss"
 });
 
 const EVENT_METADATA = Object.freeze({
@@ -360,6 +376,31 @@ const EVENT_METADATA = Object.freeze({
     actionType: ACTION_TYPE.OPEN_COMMUNITY,
     titleTemplate: "New announcement in {{communityName}}",
     bodyTemplate: "{{authorName}} posted an announcement."
+  },
+  // NEW — Feed module (Phase 1)
+  [NOTIFICATION_EVENTS.FEED_MENTIONED]: {
+    category: NOTIFICATION_CATEGORY.FEED,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_FEED_POST,
+    titleTemplate: "You were mentioned",
+    bodyTemplate: "{{authorName}} mentioned you in a post."
+  },
+  [NOTIFICATION_EVENTS.FEED_COMMENT_RECEIVED]: {
+    category: NOTIFICATION_CATEGORY.FEED,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_FEED_POST,
+    titleTemplate: "New comment on your post",
+    bodyTemplate: "{{commenterName}} commented on your post."
+  },
+  [NOTIFICATION_EVENTS.FEED_POST_LIKED]: {
+    category: NOTIFICATION_CATEGORY.FEED,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.LOW,
+    actionType: ACTION_TYPE.OPEN_FEED_POST,
+    titleTemplate: "Your post got a like",
+    bodyTemplate: "{{likerName}} liked your post."
   }
 });
 
@@ -372,7 +413,9 @@ const EXPIRY_DAYS_BY_CATEGORY = Object.freeze({
   [NOTIFICATION_CATEGORY.CONNECTION]: 90,
   [NOTIFICATION_CATEGORY.COMMUNICATION]: 90,
   [NOTIFICATION_CATEGORY.SYSTEM]: 180,
-  [NOTIFICATION_CATEGORY.COMMUNITY]: 60
+  [NOTIFICATION_CATEGORY.COMMUNITY]: 60,
+  // NEW — Feed module (Phase 1)
+  [NOTIFICATION_CATEGORY.FEED]: 60
 });
 
 const DEFAULT_EXPIRY_DAYS = 60;

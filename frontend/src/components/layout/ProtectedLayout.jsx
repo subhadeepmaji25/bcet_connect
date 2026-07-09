@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import ErrorBoundary from '../ErrorBoundary';
 
 export default function ProtectedLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,7 +22,9 @@ export default function ProtectedLayout() {
 
         <main className={`flex-1 overflow-y-auto overflow-x-hidden ${isChat ? 'p-0' : ''}`}>
           <div className={`${isChat ? 'h-full w-full' : 'p-4 md:p-6 lg:p-8 max-w-screen-xl mx-auto w-full animate-fade-in min-h-full'}`}>
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
