@@ -9,7 +9,9 @@ import {
   FileClock,
   LogOut,
   Menu,
-  X
+  X,
+  Calendar,
+  Briefcase
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -17,6 +19,8 @@ const ADMIN_LINKS = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/users', label: 'User Management', icon: Users },
   { path: '/admin/approvals', label: 'Approval Center', icon: CheckSquare },
+  { path: '/admin/jobs/approvals', label: 'Job Approvals', icon: Briefcase },
+  { path: '/admin/events', label: 'Pending Events', icon: Calendar },
   { path: '/admin/moderation', label: 'Moderation Center', icon: ShieldAlert },
   { path: '/admin/broadcast', label: 'Broadcast', icon: Radio },
   { path: '/admin/audit-logs', label: 'Audit Logs', icon: FileClock },

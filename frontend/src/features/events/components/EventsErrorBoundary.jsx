@@ -1,6 +1,5 @@
 import React from 'react';
 import { AlertTriangle, Home } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 export default class EventsErrorBoundary extends React.Component {
   constructor(props) {
@@ -32,7 +31,7 @@ export default class EventsErrorBoundary extends React.Component {
             <p className="text-slate-600 mb-6">
               We encountered an error while loading this page. Please try refreshing or go back.
             </p>
-            {process.env.NODE_ENV === 'development' && (
+            {import.meta.env.DEV && (
               <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 mb-6 text-left">
                 <p className="text-sm font-mono text-rose-700 break-words">
                   {this.state.error?.message || 'Unknown error'}

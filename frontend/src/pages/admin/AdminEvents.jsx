@@ -8,10 +8,6 @@ export default function AdminEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPendingEvents();
-  }, []);
-
   const fetchPendingEvents = async () => {
     try {
       setLoading(true);
@@ -24,6 +20,10 @@ export default function AdminEvents() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPendingEvents();
+  }, []);
 
   const handleApprove = async (eventId) => {
     if (!window.confirm('Approve this event for publishing?')) return;

@@ -22,6 +22,7 @@ const ApprovalsPage         = lazy(() => import('./pages/admin/ApprovalsPage'));
 const ModerationPage        = lazy(() => import('./pages/admin/ModerationPage'));
 const BroadcastPage         = lazy(() => import('./pages/admin/BroadcastPage'));
 const AuditLogsPage         = lazy(() => import('./pages/admin/AuditLogsPage'));
+const AdminEvents           = lazy(() => import('./pages/admin/AdminEvents'));
 
 // ─── Feed ─────────────────────────────────────────────────────────────────────
 const FeedPage              = lazy(() => import('./features/feed/components/FeedPage'));
@@ -118,6 +119,8 @@ export default function App() {
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/approvals" element={<ApprovalsPage />} />
+              <Route path="/admin/jobs/approvals" element={<AdminJobApprovalsPage />} />
+              <Route path="/admin/events" element={<AdminEvents />} />
               <Route path="/admin/moderation" element={<ModerationPage />} />
               <Route path="/admin/broadcast" element={<BroadcastPage />} />
               <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
