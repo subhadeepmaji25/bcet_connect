@@ -20,6 +20,8 @@
 // and query-string builders actually behave in the browser.
 
 const ApiError = require("../../../shared/errors/ApiError");
+const { RESOURCE_TYPE_VALUES, DIFFICULTY_VALUES } = require("../../learning/constants/resource.constants");
+const { LEARNING_CONTENT_TYPE_VALUES } = require("../models/LearningSearchDocument");
 
 const ALLOWED_ROLES = [
   "student",
@@ -217,6 +219,91 @@ const validateSearchUsersQuery = (query = {}) => {
   return filters;
 };
 
+const validateSearchAllQuery = (query = {}) => {
+  const filters = validateSearchUsersQuery(query);
+
+  const {
+    includeUsers,
+    includeLearning,
+    includeEvents,
+    contentType,
+    careerTrack,
+    department,
+    semester,
+    type,
+    difficulty,
+    skill,
+    tag,
+    category
+  } = query;
+
+  if (isProvided(includeUsers)) {
+    filters.includeUsers = normalizeBoolean(includeUsers, "includeUsers");
+  }
+
+  if (isProvided(includeLearning)) {
+    filters.includeLearning = normalizeBoolean(includeLearning, "includeLearning");
+  }
+
+  if (isProvided(includeEvents)) {
+    filters.includeEvents = normalizeBoolean(includeEvents, "includeEvents");
+  }
+
+  if (isProvided(contentType)) {
+    const normalizedContentType = normalizeString(contentType, "contentType", 30).toLowerCase();
+    if (!LEARNING_CONTENT_TYPE_VALUES.includes(normalizedContentType)) {
+      throw ApiError.badRequest("Invalid contentType filter");
+    }
+    filters.contentType = normalizedContentType;
+  }
+
+  if (isProvided(careerTrack)) {
+    filters.careerTrack = normalizeString(careerTrack, "careerTrack", 100);
+  }
+
+  if (isProvided(department)) {
+    filters.department = normalizeString(department, "department", 100);
+  }
+
+  if (isProvided(semester)) {
+    const normalizedSemester = normalizeInteger(semester, "semester");
+    if (normalizedSemester < 1 || normalizedSemester > 8) {
+      throw ApiError.badRequest("semester must be between 1 and 8");
+    }
+    filters.semester = normalizedSemester;
+  }
+
+  if (isProvided(type)) {
+    const normalizedType = normalizeString(type, "type", 50).toLowerCase();
+    if (!RESOURCE_TYPE_VALUES.includes(normalizedType)) {
+      throw ApiError.badRequest("Invalid learning resource type");
+    }
+    filters.type = normalizedType;
+  }
+
+  if (isProvided(difficulty)) {
+    const normalizedDifficulty = normalizeString(difficulty, "difficulty", 50).toLowerCase();
+    if (!DIFFICULTY_VALUES.includes(normalizedDifficulty)) {
+      throw ApiError.badRequest("Invalid difficulty filter");
+    }
+    filters.difficulty = normalizedDifficulty;
+  }
+
+  if (isProvided(skill)) {
+    filters.skill = normalizeString(skill, "skill", 100).toLowerCase();
+  }
+
+  if (isProvided(tag)) {
+    filters.tag = normalizeString(tag, "tag", 100).toLowerCase();
+  }
+
+  if (isProvided(category)) {
+    filters.category = normalizeString(category, "category", 100).toLowerCase();
+  }
+
+  return filters;
+};
+
 const validateSkill = (skill) =>
   normalizeRequiredString(skill, "Skill", 2, 100);
 
@@ -247,6 +334,7 @@ const validateSuggestionQuery = (q) => {
 
 module.exports = {
   validateSearchUsersQuery,
+  validateSearchAllQuery,
   validateSkill,
   validateBranch,
   validateCompany,

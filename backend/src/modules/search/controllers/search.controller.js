@@ -14,10 +14,13 @@ const {
   searchByCompany,
   searchSuggestions,
   getSearchProfileByUserId,
-  getSearchStats
+  getSearchStats,
+  searchAll,
+  searchEvents
 } = require("../services/search.service");
 const {
   validateSearchUsersQuery,
+  validateSearchAllQuery,
   validateSkill,
   validateBranch,
   validateCompany,
@@ -40,6 +43,29 @@ const searchUsersController = async (req, res, next) => {
     });
   } catch (error) {
     logger.error("User search failed", error, { module: "Search", userId: req.user?.id });
+    next(error);
+  }
+};
+
+const searchAllController = async (req, res, next) => {
+  try {
+    const filters = validateSearchAllQuery(req.query);
+    const result = await searchAll(filters, req.user.id, req.user.role);
+    return sendResponse(res, {
+      message: "Search results fetched successfully",
+      data: {
+        users: result.users,
+        learning: result.learning,
+        events: result.events
+      },
+      meta: {
+        usersPagination: result.usersPagination,
+        learningPagination: result.learningPagination,
+        eventsPagination: result.eventsPagination
+      }
+    });
+  } catch (error) {
+    logger.error("Global search failed", error, { module: "Search", userId: req.user?.id });
     next(error);
   }
 };
@@ -164,8 +190,39 @@ const getSearchStatsController = async (req, res, next) => {
   }
 };
 
+// Standalone Events search — searchEvents() was already wired into
+// searchAll() as a parallel branch, but had no dedicated route, so
+// a frontend wanting ONLY events (e.g. the Events page's own search
+// bar) had to call /search/all with includeLearning=false&includeUsers=false
+// and pick the events bucket — awkward and over-fetching. This gives
+// it a clean surface without touching searchAll().
+// Accepts: q, category, tag, page, limit (same as searchAll's events slice).
+const searchEventsController = async (req, res, next) => {
+  try {
+    const { q, category, tag, page, limit } = req.query;
+    const filters = {
+      ...(q && { q: String(q).trim().slice(0, 100) }),
+      ...(category && { category: String(category).trim().toLowerCase() }),
+      ...(tag && { tag: String(tag).trim().toLowerCase() }),
+      page: Math.max(Number(page) || 1, 1),
+      limit: Math.min(Math.max(Number(limit) || 10, 1), 50)
+    };
+    const result = await searchEvents(filters);
+    return sendResponse(res, {
+      message: "Events fetched successfully",
+      data: { events: result.events },
+      meta: { pagination: result.pagination }
+    });
+  } catch (error) {
+    logger.error("Events search failed", error, { module: "Search", userId: req.user?.id });
+    next(error);
+  }
+};
+
 module.exports = {
   searchUsersController,
+  searchAllController,
+  searchEventsController,
   searchBySkillController,
   searchByBranchController,
   searchByRoleController,

@@ -39,6 +39,14 @@ const { syncResourceSearchDocument, removeResourceSearchDocument } = require("..
 
 const isElevatedViewer = (userRole) => userRole === "admin";
 
+const normalizeUploadedFile = (file = {}) => ({
+  buffer: file.buffer,
+  filePath: file.path,
+  mimeType: file.mimetype || file.mimeType,
+  sizeInBytes: file.size || file.sizeInBytes,
+  originalName: file.originalname || file.originalName || ""
+});
+
 const buildVisibilityAccessQuery = (viewerProfile) => ({
   $or: [
     { visibility: VISIBILITY.PUBLIC },
@@ -135,17 +143,18 @@ const uploadResource = async (userId, authRole, payload, file) => {
   let fileData = null;
   if (!isLinkOnly) {
     if (!file) throw ApiError.badRequest("A file is required for this resource type");
+    const uploadFile = normalizeUploadedFile(file);
     try {
-      const uploaded = await uploadMedia(MEDIA_TYPES.LEARNING_RESOURCE, userId, file);
+      const uploaded = await uploadMedia(MEDIA_TYPES.LEARNING_RESOURCE, userId, uploadFile);
       fileData = {
         url: uploaded.url,
         publicId: uploaded.publicId,
-        mimeType: file.mimeType,
+        mimeType: uploadFile.mimeType,
         size: uploaded.bytes,
         originalName: uploaded.originalName || ""
       };
     } finally {
-      await cleanupLocalFile(file.filePath, { module: "Learning", userId });
+      await cleanupLocalFile(uploadFile.filePath, { module: "Learning", userId });
     }
   }
 

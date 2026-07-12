@@ -491,6 +491,8 @@ const searchAll = async (filters = {}, viewerId = null, viewerRole = null) => {
     q,
     page,
     limit,
+    category,
+    tag,
     includeUsers = true,
     includeLearning = true,
     includeEvents = true,
@@ -502,10 +504,10 @@ const searchAll = async (filters = {}, viewerId = null, viewerRole = null) => {
       ? searchUsers({ q, page, limit }, viewerId)
       : Promise.resolve({ users: [], pagination: { total: 0, page: 1, limit: 0, totalPages: 0 } }),
     includeLearning
-      ? searchLearningContent({ ...learningFilters, q, page, limit }, viewerId, viewerRole)
+      ? searchLearningContent({ ...learningFilters, q, page, limit, tag }, viewerId, viewerRole)
       : Promise.resolve({ results: [], pagination: { total: 0, page: 1, limit: 0, totalPages: 0 } }),
     includeEvents
-      ? searchEvents({ q, page, limit })
+      ? searchEvents({ q, page, limit, category, tag })
       : Promise.resolve({ events: [], pagination: { total: 0, page: 1, limit: 0, totalPages: 0 } })
   ]);
 

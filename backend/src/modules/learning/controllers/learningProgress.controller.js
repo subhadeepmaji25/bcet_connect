@@ -33,7 +33,7 @@ const getContinueLearningController = asyncHandler(async (req, res) => {
 // Faculty broadly (currently fine for admin-only use if mounted behind
 // allowRoles("admin") — tighten before opening to allowRoles("faculty")).
 const getResourceProgressStatsController = asyncHandler(async (req, res) => {
-  const result = await progressService.getResourceProgressStats(req.params.resourceId);
+  const result = await progressService.getResourceProgressStats(req.params.resourceId, req.user.id, req.user.role);
   return sendResponse(res, result);
 });
 

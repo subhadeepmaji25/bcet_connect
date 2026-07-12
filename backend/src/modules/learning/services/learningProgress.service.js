@@ -12,9 +12,13 @@ const PROGRESS_STATUS = Object.freeze({
 });
 
 const assertResourceExists = async (resourceId, userId, userRole) => {
+  // NOTE: assertCanAccessResource() already throws ApiError.notFound if the
+  // resource doesn't exist or is archived, so `resource` is always a document
+  // here. The null guard is kept as defensive insurance; it MUST come before
+  // the .status access to avoid crashing on a null reference.
   const resource = await assertCanAccessResource(resourceId, userId, userRole, { includeUnpublishedForOwner: false });
-  if (resource.status !== RESOURCE_STATUS.PUBLISHED) throw ApiError.notFound("Resource not found");
   if (!resource) throw ApiError.notFound("Resource not found");
+  if (resource.status !== RESOURCE_STATUS.PUBLISHED) throw ApiError.notFound("Resource not found");
   return resource;
 };
 
@@ -87,8 +91,8 @@ const getContinueLearning = async (userId, { limit = 10 } = {}) => {
     }));
 };
 
-const getResourceProgressStats = async (resourceId) => {
-  await assertResourceExists(resourceId);
+const getResourceProgressStats = async (resourceId, userId, userRole) => {
+  await assertResourceExists(resourceId, userId, userRole);
   const rows = await LearningProgress.aggregate([
     { $match: { resourceId: new (require("mongoose").Types.ObjectId)(resourceId) } },
     { $group: { _id: "$status", count: { $sum: 1 } } }

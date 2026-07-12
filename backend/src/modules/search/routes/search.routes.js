@@ -9,6 +9,8 @@ const express = require("express");
 const authMiddleware = require("../../../shared/middlewares/auth.middleware");
 const {
   searchUsersController,
+  searchAllController,
+  searchEventsController,
   searchBySkillController,
   searchByBranchController,
   searchByRoleController,
@@ -22,6 +24,10 @@ const {
 const router = express.Router();
 
 router.get("/users", authMiddleware, searchUsersController);
+router.get("/all", authMiddleware, searchAllController);
+// Static segment — must come BEFORE /skills/:skill, /branches/:branch, etc.
+// so Express never confuses "events" for a :param value.
+router.get("/events", authMiddleware, searchEventsController);
 router.get("/skills/:skill", authMiddleware, searchBySkillController);
 router.get("/branches/:branch", authMiddleware, searchByBranchController);
 router.get("/roles/:role", authMiddleware, searchByRoleController);
