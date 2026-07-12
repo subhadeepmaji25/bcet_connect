@@ -106,7 +106,9 @@ export default function JobDetailPage() {
     retry: false
   });
   
-  const myApplication = myAppsData?.data?.applications?.find(app => app.job === jobId || app.job?._id === jobId);
+  const myApplication = myAppsData?.data?.applications?.find(
+    (app) => app.jobId === jobId || app.jobId?._id === jobId
+  );
   const hasApplied = !!myApplication;
   const matchInfo = matchData?.data?.match;
 
@@ -225,7 +227,7 @@ export default function JobDetailPage() {
   const canManage = ["faculty", "alumni", "admin"].includes(user?.role);
   const isOwner =
     job.postedBy === user?._id || job.postedBy?._id === user?._id;
-  const viewCount = job.analytics?.viewCount ?? 0;
+  const viewCount = job.viewCount ?? 0;
   const applicationCount = job.applicationCount ?? 0;
 
   const salary = (() => {

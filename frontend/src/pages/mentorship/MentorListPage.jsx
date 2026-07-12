@@ -7,7 +7,11 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useAuth } from '../../hooks/useAuth';
 import { Link } from 'react-router-dom';
 
-const EXPERTISE_DOMAINS = ["frontend", "backend", "fullstack", "data_science", "ai_ml", "devops", "design", "product"];
+const EXPERTISE_DOMAINS = [
+  "backend", "frontend", "ai", "ml", "cloud", "devops", 
+  "dsa", "placement", "resume-review", "interview", 
+  "research", "higher-studies", "open-source", "system-design"
+];
 
 export default function MentorListPage() {
   const [searchTerm, setSearchTerm] = useState('');

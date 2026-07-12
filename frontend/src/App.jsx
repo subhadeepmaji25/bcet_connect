@@ -12,6 +12,17 @@ const RegisterPage          = lazy(() => import('./pages/auth/RegisterPage'));
 const ResetPasswordPage     = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const AccountStatusPage     = lazy(() => import('./pages/auth/AccountStatusPage'));
 
+// ─── Admin Portal ─────────────────────────────────────────────────────────────
+const AdminProtectedRoute   = lazy(() => import('./routes/AdminProtectedRoute'));
+const AdminLayout           = lazy(() => import('./components/admin/layout/AdminLayout'));
+const AdminLoginPage        = lazy(() => import('./pages/admin/AdminLoginPage'));
+const AdminDashboardPage    = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const UsersPage             = lazy(() => import('./pages/admin/UsersPage'));
+const ApprovalsPage         = lazy(() => import('./pages/admin/ApprovalsPage'));
+const ModerationPage        = lazy(() => import('./pages/admin/ModerationPage'));
+const BroadcastPage         = lazy(() => import('./pages/admin/BroadcastPage'));
+const AuditLogsPage         = lazy(() => import('./pages/admin/AuditLogsPage'));
+
 // ─── Feed ─────────────────────────────────────────────────────────────────────
 const FeedPage              = lazy(() => import('./features/feed/components/FeedPage'));
 
@@ -43,11 +54,8 @@ const MentorSessionsPage        = lazy(() => import('./pages/mentorship/MentorSe
 const MyConnectionsPage     = lazy(() => import('./pages/connections/MyConnectionsPage'));
 const ConnectionRequestsPage = lazy(() => import('./pages/connections/ConnectionRequestsPage'));
 
-// ─── Communication ────────────────────────────────────────────────────────────
+// ─── Chat ────────────────────────────────────────────────────────────────────
 const ChatLayout = lazy(() => import('./pages/communication/ChatLayout'));
-
-// ─── Admin ────────────────────────────────────────────────────────────────────
-const AdminDashboardPage    = lazy(() => import('./pages/admin/AdminDashboardPage'));
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 const NotificationsPage     = lazy(() => import('./pages/notifications/NotificationsPage'));
@@ -59,6 +67,18 @@ const CommunityDetailPage     = lazy(() => import('./pages/communities/Community
 
 // ─── Misc ─────────────────────────────────────────────────────────────────────
 const NotFoundPage          = lazy(() => import('./pages/NotFoundPage'));
+
+// ─── Learning ─────────────────────────────────────────────────────────────────
+const LearningRoutes        = lazy(() => import('./features/learning/routes'));
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+const EventsPage            = lazy(() => import('./pages/events/EventsPage'));
+const EventDetails          = lazy(() => import('./pages/events/EventDetails'));
+const CreateEvent           = lazy(() => import('./pages/events/CreateEvent'));
+const MyEvents              = lazy(() => import('./pages/events/MyEvents'));
+const MyRegistrations       = lazy(() => import('./pages/events/MyRegistrations'));
+const EventRegistrations    = lazy(() => import('./pages/events/EventRegistrations'));
+const EventCheckIn          = lazy(() => import('./pages/events/EventCheckIn'));
 
 // ─── Suspense Loader ──────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -87,6 +107,22 @@ export default function App() {
           <Route path="/register"       element={<RegisterPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/account-status" element={<AccountStatusPage />} />
+
+          {/* Admin Auth */}
+          <Route path="/admin/login"    element={<AdminLoginPage />} />
+
+          {/* Admin Portal (Isolated) */}
+          <Route element={<AdminProtectedRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/approvals" element={<ApprovalsPage />} />
+              <Route path="/admin/moderation" element={<ModerationPage />} />
+              <Route path="/admin/broadcast" element={<BroadcastPage />} />
+              <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+            </Route>
+          </Route>
 
           {/* Protected — all inside ProtectedRoute → ProtectedLayout */}
           <Route element={<ProtectedRoute />}>
@@ -126,14 +162,27 @@ export default function App() {
               <Route path="/communities/create"     element={<CreateCommunityPage />} />
               <Route path="/communities/:communityId" element={<CommunityDetailPage />} />
 
+              {/* Events */}
+              <Route path="/events"                 element={<EventsPage />} />
+              <Route path="/events/registrations/my" element={<MyRegistrations />} />
+              <Route path="/events/:id"             element={<EventDetails />} />
+
               {/* Chat (Unified WhatsApp Style) */}
               <Route path="/chat"                 element={<ChatLayout />} />
               <Route path="/chat/:conversationId" element={<ChatLayout />} />
+
+              {/* Learning */}
+              <Route path="/learning/*"           element={<LearningRoutes />} />
 
               {/* ── Role: faculty/alumni/admin ── */}
               <Route element={<RoleRoute allowedRoles={['faculty','alumni','admin']} />}>
                 <Route path="/jobs/post"                          element={<PostJobPage />} />
                 <Route path="/jobs/my"                            element={<MyJobsPage />} />
+                <Route path="/events/create"                      element={<CreateEvent />} />
+                <Route path="/events/my-events"                   element={<MyEvents />} />
+                <Route path="/events/:id/edit"                    element={<CreateEvent />} /> {/* Reuse CreateEvent for editing */}
+                <Route path="/events/:id/registrations"           element={<EventRegistrations />} />
+                <Route path="/events/:id/check-in"                element={<EventCheckIn />} />
                 <Route path="/mentors/become"                     element={<BecomeMentorPage />} />
                 <Route path="/mentors/requests/received"          element={<ReceivedMentorRequestsPage />} />
               </Route>
@@ -141,12 +190,6 @@ export default function App() {
               {/* ── Role: student/alumni ── */}
               <Route element={<RoleRoute allowedRoles={['student','alumni']} />}>
                 <Route path="/recommendation"  element={<RecommendedJobsPage />} />
-              </Route>
-
-              {/* ── Role: admin only ── */}
-              <Route element={<RoleRoute allowedRoles={['admin']} />}>
-                <Route path="/admin"                element={<AdminDashboardPage />} />
-                <Route path="/jobs/admin/pending"   element={<AdminJobApprovalsPage />} />
               </Route>
 
             </Route>

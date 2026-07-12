@@ -235,14 +235,28 @@ const getPublicMentorProfile = async (mentorUserId, viewerId = null) => {
   };
 };
 
-const verifyMentor = async (mentorUserId, adminId) => {
-  const mentorProfile = await MentorProfile.findOne({ userId: mentorUserId });
+const verifyMentor = async (idOrUserId, adminId) => {
+  const mentorProfile = await MentorProfile.findOne({
+    $or: [{ _id: idOrUserId }, { userId: idOrUserId }]
+  });
   if (!mentorProfile) throw ApiError.notFound("Mentor not found");
   mentorProfile.verificationStatus = VERIFICATION_STATUS.VERIFIED;
   mentorProfile.verifiedBy = adminId;
   mentorProfile.verifiedAt = new Date();
   await mentorProfile.save();
   return { success: true, message: "Mentor verified successfully", data: { mentorProfile } };
+};
+
+const rejectMentor = async (idOrUserId, adminId, reason = "") => {
+  const mentorProfile = await MentorProfile.findOne({
+    $or: [{ _id: idOrUserId }, { userId: idOrUserId }]
+  });
+  if (!mentorProfile) throw ApiError.notFound("Mentor not found");
+  mentorProfile.verificationStatus = VERIFICATION_STATUS.REJECTED;
+  // Use metadata or another field to store rejection reason if needed, 
+  // but for now just updating the status is sufficient to remove from pending.
+  await mentorProfile.save();
+  return { success: true, message: "Mentor rejected successfully", data: { mentorProfile } };
 };
 
 // FIXED — private mentors ab listing me nahi aayenge (searchService ko flag pass kiya)
@@ -328,6 +342,7 @@ module.exports = {
   reactivateMentorProfile,
   getPublicMentorProfile,
   verifyMentor,
+  rejectMentor,
   listMentors,
   getTopMentors,
   getVerifiedMentors

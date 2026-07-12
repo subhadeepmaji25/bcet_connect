@@ -1,17 +1,25 @@
 // backend/src/modules/notification/constants/notification.constants.js
 //
-// UPDATED (this pass): Added FEED_MENTIONED, FEED_COMMENT_RECEIVED,
-// FEED_POST_LIKED events + FEED category + OPEN_FEED_POST action type +
-// metadata + expiry. Feed module reuses the exact same event → category
-// → metadata → expiry wiring pattern Communities already established —
-// no new plumbing, only new entries.
+// UPDATED (Phase 2 — Events career lifecycle): Added the three
+// NOTIFICATION_EVENTS keys the Events services already call but that
+// were missing here — EVENT_ATTENDANCE_MARKED (eventAttendance.service.js),
+// EVENT_CERTIFICATE_ISSUED (eventCertificate.service.js), and
+// EVENT_FEEDBACK_RECEIVED (eventFeedback.service.js). Without these keys,
+// each of those notify() calls was silently no-op'd by notify()'s
+// NOTIFICATION_EVENT_VALUES.includes(event) guard — same failure mode
+// the six RESOURCE_* keys and SUBJECT_DISCUSSION_ANSWERED had before
+// they were first added here. Confirmed via grep against
+// modules/events/services/*.js — these three were the only remaining
+// gaps between what Events fires and what this file recognizes.
 //
-// (kept from earlier pass) Added COMMUNITY_ANNOUNCEMENT event +
-// metadata. Previously, community.service.js's announcement post-type
-// had no dedicated broadcast event — only @mentioned users got notified
-// even when a leader posted an official announcement meant for every
-// member. This event is now the one communityPost.service.js fires for
-// the whole member list when postType === "announcement".
+// UPDATED (Phase 1 follow-up — Reminder cron): Added EVENT_REMINDER,
+// fired by the new sendEventReminders() in event.service.js (called
+// from core/scheduleEventLifecycleCron.js's per-minute tick). This was
+// the last gap flagged in the phased upgrade plan — "no reminder cron
+// (24h/2h/before-event notifications)". One event key covers both the
+// 24h and 2h reminder, distinguished at send time via the
+// {{hoursRemaining}} template variable — a second key wasn't needed
+// since the category/type/priority/actionType are identical for both.
 
 const NOTIFICATION_EVENTS = Object.freeze({
   USER_REGISTERED: "auth.user.registered",
@@ -45,12 +53,48 @@ const NOTIFICATION_EVENTS = Object.freeze({
   MENTIONED: "community.post.mentioned",
   COMMUNITY_COMMENT_RECEIVED: "community.comment.received",
   COMMUNITY_ANNOUNCEMENT: "community.post.announcement",
-  // NEW — Feed module (Phase 1)
+  // Feed module (Phase 1)
   FEED_MENTIONED: "feed.post.mentioned",
   FEED_COMMENT_RECEIVED: "feed.comment.received",
   FEED_POST_LIKED: "feed.post.liked",
   FEED_CONTENT_REPORTED: "feed.content.reported",
-  FEED_REPORT_RESOLVED: "feed.report.resolved"
+  FEED_REPORT_RESOLVED: "feed.report.resolved",
+  // Events module (Phase 1 — approval / registration lifecycle)
+  EVENT_APPROVED: "event.approved",
+  EVENT_REJECTED: "event.rejected",
+  EVENT_CANCELLED: "event.cancelled",
+  EVENT_COMPLETED: "event.completed",
+  EVENT_REGISTRATION_CONFIRMED: "event.registration.confirmed",
+  EVENT_REGISTRATION_WAITLISTED: "event.registration.waitlisted",
+  // Events module (Phase 2 — career lifecycle: attendance / certificate /
+  // feedback). Values follow the same "<domain>.<entity>.<action>"
+  // convention as every other key above and as shared/events/eventNames.js
+  // documents. Added here because eventAttendance.service.js,
+  // eventCertificate.service.js, and eventFeedback.service.js already
+  // call notify() with these — this addition makes those calls resolve
+  // to a real string instead of `undefined`.
+  EVENT_ATTENDANCE_MARKED: "event.attendance.marked",
+  EVENT_CERTIFICATE_ISSUED: "event.certificate.issued",
+  EVENT_FEEDBACK_RECEIVED: "event.feedback.received",
+  // Events module (Phase 1 follow-up — reminder cron). Fired for both
+  // the 24h-before and 2h-before reminder ticks; see EVENT_METADATA
+  // below and sendEventReminders() in event.service.js.
+  EVENT_REMINDER: "event.reminder",
+  // Learning module (Academic Learning + Engagement, Phase 1 & 3)
+  RESOURCE_PUBLISHED: "learning.resource.published",
+  RESOURCE_PENDING_VERIFICATION: "learning.resource.pending",
+  RESOURCE_VERIFIED: "learning.resource.verified",
+  RESOURCE_REJECTED: "learning.resource.rejected",
+  RESOURCE_RATED: "learning.resource.rated",
+  RESOURCE_COMMENT_RECEIVED: "learning.resource.comment.received",
+  // NEW (Phase 2b) — Learning module (Subject Discussion / Q&A)
+  // Dedicated event for "someone answered your question" — deliberately
+  // separate from RESOURCE_COMMENT_RECEIVED above, since a Subject
+  // Discussion answer and a Resource comment are two different surfaces
+  // (subjectDiscussion.service.js vs resourceEngagement.service.js),
+  // same "don't merge, keep parallel" restraint those two services
+  // already keep from each other at the model/service layer.
+  SUBJECT_DISCUSSION_ANSWERED: "learning.discussion.answered"
 });
 
 const NOTIFICATION_EVENT_VALUES = Object.freeze(Object.values(NOTIFICATION_EVENTS));
@@ -65,8 +109,12 @@ const NOTIFICATION_CATEGORY = Object.freeze({
   COMMUNICATION: "COMMUNICATION",
   SYSTEM: "SYSTEM",
   COMMUNITY: "COMMUNITY",
-  // NEW — Feed module (Phase 1)
-  FEED: "FEED"
+  // Feed module (Phase 1)
+  FEED: "FEED",
+  // Events module (Phase 1)
+  EVENT: "EVENT",
+  // Learning module
+  LEARNING: "LEARNING"
 });
 
 const NOTIFICATION_CATEGORY_VALUES = Object.freeze(Object.values(NOTIFICATION_CATEGORY));
@@ -112,8 +160,12 @@ const ACTION_TYPE = Object.freeze({
   OPEN_CONNECTION: "OPEN_CONNECTION",
   OPEN_NOTIFICATION: "OPEN_NOTIFICATION",
   OPEN_COMMUNITY: "OPEN_COMMUNITY",
-  // NEW — Feed module (Phase 1)
-  OPEN_FEED_POST: "OPEN_FEED_POST"
+  // Feed module (Phase 1)
+  OPEN_FEED_POST: "OPEN_FEED_POST",
+  // Events module (Phase 1)
+  OPEN_EVENT: "OPEN_EVENT",
+  // Learning module
+  OPEN_LEARNING_RESOURCE: "OPEN_LEARNING_RESOURCE"
 });
 
 const CATEGORY_ICON_MAP = Object.freeze({
@@ -126,8 +178,12 @@ const CATEGORY_ICON_MAP = Object.freeze({
   [NOTIFICATION_CATEGORY.COMMUNICATION]: "message-circle",
   [NOTIFICATION_CATEGORY.SYSTEM]: "bell",
   [NOTIFICATION_CATEGORY.COMMUNITY]: "users-round",
-  // NEW — Feed module (Phase 1)
-  [NOTIFICATION_CATEGORY.FEED]: "rss"
+  // Feed module (Phase 1)
+  [NOTIFICATION_CATEGORY.FEED]: "rss",
+  // Events module (Phase 1)
+  [NOTIFICATION_CATEGORY.EVENT]: "calendar",
+  // Learning module
+  [NOTIFICATION_CATEGORY.LEARNING]: "book-open"
 });
 
 const EVENT_METADATA = Object.freeze({
@@ -379,7 +435,7 @@ const EVENT_METADATA = Object.freeze({
     titleTemplate: "New announcement in {{communityName}}",
     bodyTemplate: "{{authorName}} posted an announcement."
   },
-  // NEW — Feed module (Phase 1)
+  // Feed module (Phase 1)
   [NOTIFICATION_EVENTS.FEED_MENTIONED]: {
     category: NOTIFICATION_CATEGORY.FEED,
     type: NOTIFICATION_TYPE.INFO,
@@ -419,6 +475,149 @@ const EVENT_METADATA = Object.freeze({
     actionType: ACTION_TYPE.OPEN_FEED_POST,
     titleTemplate: "Feed report resolved",
     bodyTemplate: "A feed report was marked {{status}}."
+  },
+  // Events module (Phase 1 — approval / registration lifecycle)
+  [NOTIFICATION_EVENTS.EVENT_APPROVED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Event approved",
+    bodyTemplate: 'Your event "{{eventTitle}}" has been approved and is now live.'
+  },
+  [NOTIFICATION_EVENTS.EVENT_REJECTED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.ERROR,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Event rejected",
+    bodyTemplate: 'Your event "{{eventTitle}}" was rejected.'
+  },
+  [NOTIFICATION_EVENTS.EVENT_CANCELLED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.WARNING,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Event cancelled",
+    bodyTemplate: 'The event "{{eventTitle}}" has been cancelled.'
+  },
+  [NOTIFICATION_EVENTS.EVENT_COMPLETED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.LOW,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Event completed",
+    bodyTemplate: 'Your event "{{eventTitle}}" has ended.'
+  },
+  [NOTIFICATION_EVENTS.EVENT_REGISTRATION_CONFIRMED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Registration confirmed",
+    bodyTemplate: 'You are registered for "{{eventTitle}}".'
+  },
+  [NOTIFICATION_EVENTS.EVENT_REGISTRATION_WAITLISTED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Added to waitlist",
+    bodyTemplate: 'You are on the waitlist for "{{eventTitle}}".'
+  },
+  // Events module (Phase 2 — career lifecycle: attendance / certificate / feedback)
+  [NOTIFICATION_EVENTS.EVENT_ATTENDANCE_MARKED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Attendance marked",
+    bodyTemplate: 'Your attendance for "{{eventTitle}}" has been recorded.'
+  },
+  [NOTIFICATION_EVENTS.EVENT_CERTIFICATE_ISSUED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Certificate ready",
+    bodyTemplate: 'Your certificate for "{{eventTitle}}" is ready to download.'
+  },
+  [NOTIFICATION_EVENTS.EVENT_FEEDBACK_RECEIVED]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.LOW,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "New feedback received",
+    bodyTemplate: '{{reviewerName}} left feedback on "{{eventTitle}}".'
+  },
+  // Events module (Phase 1 follow-up — reminder cron). {{hoursRemaining}}
+  // is either 24 or 2 depending on which window fired — see
+  // sendEventReminders() in event.service.js.
+  [NOTIFICATION_EVENTS.EVENT_REMINDER]: {
+    category: NOTIFICATION_CATEGORY.EVENT,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.HIGH,
+    actionType: ACTION_TYPE.OPEN_EVENT,
+    titleTemplate: "Upcoming event reminder",
+    bodyTemplate: '"{{eventTitle}}" starts in {{hoursRemaining}} hours.'
+  },
+  // Learning module (Academic Learning + Engagement)
+  [NOTIFICATION_EVENTS.RESOURCE_PUBLISHED]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "New resource published",
+    bodyTemplate: 'A new resource "{{resourceTitle}}" was published for {{subjectName}}.'
+  },
+  [NOTIFICATION_EVENTS.RESOURCE_PENDING_VERIFICATION]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "Resource awaiting verification",
+    bodyTemplate: 'A CR uploaded "{{resourceTitle}}" for {{subjectName}} — needs your review.'
+  },
+  [NOTIFICATION_EVENTS.RESOURCE_VERIFIED]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "Resource verified",
+    bodyTemplate: 'Your upload "{{resourceTitle}}" was verified and published.'
+  },
+  [NOTIFICATION_EVENTS.RESOURCE_REJECTED]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.ERROR,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "Resource rejected",
+    bodyTemplate: 'Your upload "{{resourceTitle}}" was rejected. Reason: {{rejectionReason}}'
+  },
+  [NOTIFICATION_EVENTS.RESOURCE_RATED]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.LOW,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "New rating received",
+    bodyTemplate: "{{raterName}} rated your resource {{rating}} stars."
+  },
+  [NOTIFICATION_EVENTS.RESOURCE_COMMENT_RECEIVED]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.INFO,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "New comment on your resource",
+    bodyTemplate: "{{commenterName}} commented on your resource."
+  },
+  // NEW (Phase 2b) — Learning module (Subject Discussion / Q&A)
+  [NOTIFICATION_EVENTS.SUBJECT_DISCUSSION_ANSWERED]: {
+    category: NOTIFICATION_CATEGORY.LEARNING,
+    type: NOTIFICATION_TYPE.SUCCESS,
+    priority: NOTIFICATION_PRIORITY.NORMAL,
+    actionType: ACTION_TYPE.OPEN_LEARNING_RESOURCE,
+    titleTemplate: "New answer to your question",
+    bodyTemplate: "{{answererName}} answered your question."
   }
 });
 
@@ -432,8 +631,12 @@ const EXPIRY_DAYS_BY_CATEGORY = Object.freeze({
   [NOTIFICATION_CATEGORY.COMMUNICATION]: 90,
   [NOTIFICATION_CATEGORY.SYSTEM]: 180,
   [NOTIFICATION_CATEGORY.COMMUNITY]: 60,
-  // NEW — Feed module (Phase 1)
-  [NOTIFICATION_CATEGORY.FEED]: 60
+  // Feed module (Phase 1)
+  [NOTIFICATION_CATEGORY.FEED]: 60,
+  // Events module (Phase 1)
+  [NOTIFICATION_CATEGORY.EVENT]: 60,
+  // Learning module
+  [NOTIFICATION_CATEGORY.LEARNING]: 60
 });
 
 const DEFAULT_EXPIRY_DAYS = 60;

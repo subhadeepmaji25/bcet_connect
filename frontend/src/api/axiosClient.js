@@ -26,7 +26,11 @@ axiosClient.interceptors.response.use(
   (response) => response.data, // always { success, message, data, meta, timestamp }
   (error) => {
     const status = error.response?.status;
-    const message = error.response?.data?.message || "Something went wrong";
+    const payload = error.response?.data || {
+      success: false,
+      message: error.message || "Something went wrong",
+    };
+    const message = payload.message || "Something went wrong";
 
     if (status === 401) {
       // Dispatch a custom event to let AuthContext handle logout cleanly
@@ -42,10 +46,14 @@ axiosClient.interceptors.response.use(
       }
     }
     
-    // Reject with standardized backend error shape
-    return Promise.reject(error.response?.data || {
-      success: false,
-      message: error.message || "Something went wrong",
+    // Reject with standardized backend error shape while preserving a
+    // response-like object for legacy callers still reading err.response.data.
+    return Promise.reject({
+      ...payload,
+      response: {
+        status,
+        data: payload,
+      },
     });
   }
 );

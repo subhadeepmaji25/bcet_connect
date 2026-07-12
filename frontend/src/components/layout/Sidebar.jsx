@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom';
 import {
   Zap, Briefcase, Sparkles, Users, GraduationCap,
   MessageSquare, User, FileText, Building2, LayoutDashboard,
-  Clock, Star, UserCheck, LogOut, Bell, Activity
+  Clock, Star, UserCheck, LogOut, Bell, Activity, Calendar,
+  BookOpen, Library, UploadCloud
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS, ROLE_COLORS } from '../../constants/appConstants';
@@ -81,8 +82,16 @@ export default function Sidebar({ collapsed, onClose }) {
           <NavGroup title="Discover">
             <NavItem to="/feed"           icon={Activity}       label="Feed"          end />
             <NavItem to="/communities"    icon={Users}          label="Communities"   end />
+            <NavItem to="/events"         icon={Calendar}       label="Events"        end />
             <NavItem to="/jobs"           icon={Briefcase}      label="Jobs"          end />
             {canApply && <NavItem to="/recommendation" icon={Sparkles} label="Recommended" end />}
+          </NavGroup>
+
+          <NavGroup title="Learning">
+            <NavItem to="/learning"           icon={BookOpen}       label="Learning Hub"  end />
+            <NavItem to="/learning/resources" icon={Library}        label="Resources"     end />
+            <NavItem to="/learning/paths"     icon={GraduationCap}  label="Learning Paths" end />
+            <NavItem to="/learning/my-uploads" icon={UploadCloud}   label="My Uploads"    end />
           </NavGroup>
 
           <NavGroup title="Network">
@@ -94,9 +103,11 @@ export default function Sidebar({ collapsed, onClose }) {
 
           <NavGroup title="My Space">
             <NavItem to="/profile"                  icon={User}      label="My Profile"      end />
+            <NavItem to="/events/registrations/my"  icon={Calendar}  label="My Event Passes" end />
             {canApply && <NavItem to="/jobs/applications/my"  icon={FileText}  label="My Applications" end />}
             {canPost  && <NavItem to="/jobs/my"              icon={Building2} label="My Jobs"          end />}
             {canPost  && <NavItem to="/jobs/post"            icon={Briefcase} label="Post a Job"       end />}
+            {canPost  && <NavItem to="/events/my-events"     icon={Calendar}  label="My Events"        end />}
             {canApply && <NavItem to="/mentors/requests/my"  icon={Clock}     label="My Mentorship Requests"  end />}
             {canBeMentor && <NavItem to="/mentors/requests/received" icon={Star} label="Received Requests" end />}
             {canBeMentor && (
@@ -109,6 +120,7 @@ export default function Sidebar({ collapsed, onClose }) {
             <NavGroup title="Admin">
               <NavItem to="/admin"              icon={LayoutDashboard} label="Admin Dashboard" end />
               <NavItem to="/jobs/admin/pending" icon={Clock}           label="Pending Jobs"   end />
+              <NavItem to="/events/admin/pending" icon={Calendar}      label="Pending Events" end />
             </NavGroup>
           )}
         </nav>

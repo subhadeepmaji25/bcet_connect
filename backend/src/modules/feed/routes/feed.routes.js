@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const { authMiddleware } = require("../../../shared/middlewares/auth.middleware");
+const { allowRoles } = require("../../../shared/middlewares/roleMiddleware");
 const { feedActionLimiter, feedInteractionLimiter } = require("../../../shared/security/rateLimiters");
 
 const {
@@ -49,10 +50,21 @@ router.post("/", authMiddleware, feedActionLimiter, validateCreatePost, createPo
 router.get("/bookmarks", authMiddleware, getMyBookmarksController);
 
 router.post("/reports", authMiddleware, validateCreateReport, createReportController);
-router.get("/admin/reports", authMiddleware, validateReportsQuery, getReportsController);
+
+// UPGRADE: allowRoles("admin") added on both admin-report routes.
+// Previously only authMiddleware guarded these — any authenticated user
+// (student/faculty/alumni) could reach the controller, and got rejected
+// only deep inside feedReport.service.js's isFeedAdmin() check, after
+// query params were already parsed/validated. Route-level role guard now
+// rejects non-admins immediately with a clean 403, before any further
+// work happens. Service-level isFeedAdmin() check is left in place
+// deliberately — defense-in-depth in case this service is ever called
+// from somewhere else that skips the route guard.
+router.get("/admin/reports", authMiddleware, allowRoles("admin"), validateReportsQuery, getReportsController);
 router.patch(
   "/admin/reports/:reportId",
   authMiddleware,
+  allowRoles("admin"),
   validateReportIdParam,
   validateResolveReport,
   resolveReportController

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -9,7 +9,7 @@ import {
   Calendar as CalendarIcon, ChevronDown, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { createJob } from '../../api/jobs.api';
+import { createJob, getJobById, updateJob } from '../../api/jobs.api';
 
 const STEPS = [
   { id: 'details', label: 'Job Details', subtitle: 'Title, company & location' },
@@ -110,9 +110,21 @@ const CustomDateTimePicker = ({ value, onChange }) => {
 
 export default function PostJobPage() {
   const navigate = useNavigate();
+  const { jobId } = useParams();
+  const isEditMode = Boolean(jobId);
   const [activeStep, setActiveStep] = useState(0);
+  const [loadingDraft, setLoadingDraft] = useState(isEditMode);
   
   const { register, handleSubmit, watch, control, formState: { errors }, trigger } = useForm({
+    defaultValues: {
+      title: '', company: '', location: '', jobType: 'Full-time',
+      experienceLevel: 'Entry', salary: '', description: '', requirements: '',
+      deadline: ''
+    }
+  });
+  const { reset } = { reset: undefined, ...useForm() };
+  // Keep the original form instance values from above.
+  const formApi = useForm({
     defaultValues: {
       title: '', company: '', location: '', jobType: 'Full-time',
       experienceLevel: 'Entry', salary: '', description: '', requirements: '',

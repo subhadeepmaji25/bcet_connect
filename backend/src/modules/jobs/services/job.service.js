@@ -1,12 +1,80 @@
 // backend/src/modules/jobs/services/job.service.js
 const Job = require("../models/Job");
 const JobApplication = require("../models/JobApplication");
+const Profile = require("../../users/models/Profile");
 const ApiError = require("../../../shared/errors/ApiError");
 const { notify } = require("../../notification/listeners/notification.listener");
 const { NOTIFICATION_EVENTS } = require("../../notification/constants/notification.constants");
 
 const POSTER_ROLES = ["faculty", "alumni", "admin"];
 const ALLOWED_UPDATE_FIELDS = ["title", "company", "description", "category", "employmentType", "location", "isRemote", "requiredSkills", "preferredSkills", "minExperienceYears", "targetRoles", "salaryMin", "salaryMax", "isSalaryVisible", "deadline", "applyUrl", "eligibility", "visibility"];
+
+const normalize = (value) => String(value || "").trim().toLowerCase();
+
+const isJobPubliclyOpen = (job) => (
+  job
+  && job.status === "approved"
+  && !job.isDeleted
+  && !job.isArchived
+  && (!job.deadline || new Date(job.deadline) >= new Date())
+);
+
+const canUserAccessJob = async (job, userId, userRole, viewerProfile = null) => {
+  if (!job) return false;
+
+  const isOwner = userId && job.postedBy.toString() === userId.toString();
+  if (isOwner || userRole === "admin") {
+    return true;
+  }
+
+  if (!isJobPubliclyOpen(job)) {
+    return false;
+  }
+
+  if (job.visibility === "hidden") {
+    return false;
+  }
+
+  if (job.visibility === "public" || job.visibility === "campus-only") {
+    return true;
+  }
+
+  if (job.visibility === "branch-specific") {
+    const profile = viewerProfile || await Profile.findOne({ userId }).select("branch department").lean();
+    const viewerBranches = [profile?.branch, profile?.department]
+      .map(normalize)
+      .filter(Boolean);
+    const allowedBranches = (job.eligibility?.allowedBranches || [])
+      .map(normalize)
+      .filter(Boolean);
+
+    return viewerBranches.length > 0
+      && allowedBranches.length > 0
+      && viewerBranches.some((branch) => allowedBranches.includes(branch));
+  }
+
+  return false;
+};
+
+const buildApprovedJobVisibilityQuery = (viewerProfile = null) => {
+  const visibilityQuery = [
+    { visibility: "public" },
+    { visibility: "campus-only" }
+  ];
+
+  const viewerBranches = [viewerProfile?.branch, viewerProfile?.department]
+    .map(normalize)
+    .filter(Boolean);
+
+  if (viewerBranches.length > 0) {
+    visibilityQuery.push({
+      visibility: "branch-specific",
+      "eligibility.allowedBranches": { $in: viewerBranches }
+    });
+  }
+
+  return { $or: visibilityQuery };
+};
 
 const createJob = async (userId, userRole, payload) => {
   if (!POSTER_ROLES.includes(userRole)) {
@@ -260,34 +328,44 @@ const verifyCompany = async (jobId, adminId) => {
   return { success: true, message: "Company verified for this job", data: { job } };
 };
 
-const getApprovedJobs = async (filters = {}) => {
+const getApprovedJobs = async (filters = {}, viewer = {}) => {
   const { q, category, employmentType, isRemote, skill, page = 1, limit = 10 } = filters;
+  const viewerProfile = await Profile.findOne({ userId: viewer.userId }).select("branch department").lean();
   const query = {
     status: "approved",
     isDeleted: false,
-    isArchived: false,
-    $or: [{ deadline: null }, { deadline: { $gte: new Date() } }]
+    isArchived: false
   };
+  query.$and = [
+    buildApprovedJobVisibilityQuery(viewerProfile),
+    { $or: [{ deadline: null }, { deadline: { $gte: new Date() } }] }
+  ];
   if (q) {
     const regex = new RegExp(q.trim(), "i");
-    query.$and = [{
+    query.$and.push({
       $or: [
         { title: regex }, { company: regex },
         { description: regex }, { requiredSkills: regex }
       ]
-    }];
+    });
   }
   if (category) query.category = category;
   if (employmentType) query.employmentType = employmentType;
   if (isRemote !== undefined) query.isRemote = isRemote === "true";
   if (skill) query.requiredSkills = new RegExp(skill.trim(), "i");
   const skip = (Number(page) - 1) * Number(limit);
-  const [jobs, total] = await Promise.all([
+  const [rawJobs, total] = await Promise.all([
     Job.find(query)
       .sort({ "metadata.featured": -1, "metadata.priority": -1, approvedAt: -1, createdAt: -1 })
       .skip(skip).limit(Number(limit)).lean(),
     Job.countDocuments(query)
   ]);
+  const jobs = [];
+  for (const job of rawJobs) {
+    if (await canUserAccessJob(job, viewer.userId, viewer.userRole, viewerProfile)) {
+      jobs.push(job);
+    }
+  }
   return {
     jobs,
     pagination: {
@@ -319,10 +397,12 @@ const getMyJobs = async (userId, { page = 1, limit = 10 } = {}) => {
   return { jobs, pagination: { total, page: Number(page), limit: Number(limit) } };
 };
 
-const getJobById = async (jobId) => {
+const getJobById = async (jobId, userId, userRole) => {
   const job = await Job.findOne({ _id: jobId, isDeleted: false })
     .populate("postedBy", "username fullName role");
   if (!job) throw ApiError.notFound("Job not found");
+  const canAccess = await canUserAccessJob(job, userId, userRole);
+  if (!canAccess) throw ApiError.notFound("Job not found");
   await expireJob(job);
   await Job.updateOne({ _id: jobId }, { $inc: { viewCount: 1 } });
   return job.toObject ? job.toObject() : job;
@@ -368,5 +448,7 @@ module.exports = {
   expireJob, expireOverdueJobs,
   featureJob, verifyCompany,
   getApprovedJobs, getPendingJobs, getMyJobs, getJobById,
-  getAnalytics
+  getAnalytics,
+  canUserAccessJob,
+  isJobPubliclyOpen
 };

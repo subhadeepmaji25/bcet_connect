@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../../../shared/middlewares/auth.middleware");
+const { allowRoles } = require("../../../shared/middlewares/roleMiddleware");
 const { createUploadMiddleware } = require("../../../shared/middlewares/upload.middleware");
 const { MEDIA_TYPES } = require("../../../shared/media/media.constants");
 
@@ -13,6 +14,7 @@ const {
   updateLastActiveController,
   uploadAvatarController,
   deleteAvatarController,
+  setCRStatusController, // NEW (Phase 1a)
 } = require("../controllers/profile.controller");
 const {
   addSkillController,
@@ -34,13 +36,13 @@ const {
   getDefaultResumeController
 } = require("../controllers/resume.controller");
 
-const { validateUpdateProfile } = require("../validators/profile.validator");
+const { validateUpdateProfile, validateSetCRStatusParam, validateSetCRStatus } = require("../validators/profile.validator"); // UPDATED
 const { validateCreateSkill, validateUpdateSkill, validateBulkAddSkills } = require("../validators/skill.validator");
 const { validateCreateEducation, validateUpdateEducation } = require("../validators/education.validator");
 const { validateCreateExperience, validateUpdateExperience } = require("../validators/experience.validator");
 const { validateCreateProject, validateUpdateProject } = require("../validators/project.validator");
 const { validateUpdateResume } = require("../validators/resume.validator");
-const { uploadLimiter } = require("../../../shared/security/rateLimiters");
+const { uploadLimiter, jobActionLimiter } = require("../../../shared/security/rateLimiters");
 
 router.get("/profile", authMiddleware, getMyProfileController);
 router.patch("/profile", authMiddleware, validateUpdateProfile, updateProfileController);
@@ -53,6 +55,27 @@ router.patch("/profile/activity", authMiddleware, updateLastActiveController);
 // viewerId=undefined, which was the earlier regression).
 // ─────────────────────────────────────────
 router.get("/profile/public/:userId", authMiddleware, getPublicProfileController);
+
+// ─────────────────────────────────────────
+// NEW (Phase 1a — Learning module CR flow): Faculty/Admin-only,
+// separate from the self-service PATCH /profile route above. This is
+// the ONLY legitimate way isCR ever becomes true — see
+// profile.validator.js's file header for why it's deliberately absent
+// from updateProfileSchema. Static param route, no ambiguity risk with
+// "/profile" siblings above since the path prefix differs.
+// jobActionLimiter reused here (same "moderate write action by staff"
+// rate-limit tier already applied to Subject creation in
+// learning.routes.js) — this isn't a high-frequency action.
+// ─────────────────────────────────────────
+router.patch(
+  "/:userId/cr-status",
+  authMiddleware,
+  allowRoles("faculty", "admin"),
+  jobActionLimiter,
+  validateSetCRStatusParam,
+  validateSetCRStatus,
+  setCRStatusController
+);
 
 // ─────────────────────────────────────────
 // Avatar — memory storage (small image, no parser needs a disk path

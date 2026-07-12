@@ -71,7 +71,10 @@ return sendResponse(res,result);
 });
 
 const getApprovedJobsController=asyncHandler(async(req,res)=>{
-const result=await jobService.getApprovedJobs(req.query);
+const result=await jobService.getApprovedJobs(req.query,{
+userId:req.user.id,
+userRole:req.user.role
+});
 return sendResponse(res,{
 success:true,
 message:"Jobs fetched successfully",
@@ -101,7 +104,7 @@ meta:{pagination:result.pagination}
 });
 
 const getJobByIdController=asyncHandler(async(req,res)=>{
-const job=await jobService.getJobById(req.params.jobId);
+const job=await jobService.getJobById(req.params.jobId,req.user.id,req.user.role);
 return sendResponse(res,{
 success:true,
 message:"Job fetched successfully",

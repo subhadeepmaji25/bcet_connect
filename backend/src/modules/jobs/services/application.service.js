@@ -7,17 +7,21 @@ const ApiError = require("../../../shared/errors/ApiError");
 const logger = require("../../../shared/logger/logger");
 const { loadCandidateContext, calculateMatchScoreForApplication } = require("../../recommendation/services/recommendation.service");
 const { checkEligibility } = require("../../recommendation/services/eligibility.service");
+const { canUserAccessJob } = require("./job.service");
 const { notify } = require("../../notification/listeners/notification.listener");
 const { NOTIFICATION_EVENTS } = require("../../notification/constants/notification.constants");
 
 const REVIEW_STATUSES = ["shortlisted", "rejected", "accepted"];
 const TERMINAL_STATUSES = ["accepted", "rejected", "withdrawn"];
 
-const applyForJob = async (jobId, applicantId, payload) => {
+const applyForJob = async (jobId, applicantId, applicantRole, payload) => {
   const job = await Job.findOne({ _id: jobId, isDeleted: false });
   if (!job) throw ApiError.notFound("Job not found");
   if (job.status !== "approved") throw ApiError.badRequest("This job is not accepting applications");
   if (job.deadline && new Date() > new Date(job.deadline)) throw ApiError.badRequest("Application deadline has passed");
+  if (!(await canUserAccessJob(job, applicantId, applicantRole))) {
+    throw ApiError.forbidden("You do not have access to apply for this job");
+  }
 
   const existing = await JobApplication.findOne({ jobId, applicantId });
   if (existing) throw ApiError.conflict("You have already applied for this job");

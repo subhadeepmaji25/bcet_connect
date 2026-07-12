@@ -84,7 +84,6 @@ const communityActionLimiter = createLimiter(
   "Too many community actions. Try again in 1 hour."
 );
 
-// ── NEW ──────────────────────────────────────────────
 // Feed write actions — create post, create comment. Same tier as
 // communityActionLimiter (moderate-frequency, spammable-if-unguarded
 // writes), slightly looser cap since a global feed with connections +
@@ -104,6 +103,56 @@ const feedInteractionLimiter = createLimiter(
   "Too many feed interactions. Try again in 1 hour."
 );
 
+// Event create/register — same tier as jobActionLimiter/
+// communityActionLimiter (moderate-frequency, spammable-if-unguarded
+// writes: creating an event, or registering for one). A single
+// organizer creating 20 events in an hour, or a single student
+// registering for 20 events in an hour, is already abuse-level activity
+// rather than normal usage.
+const eventActionLimiter = createLimiter(
+  60,
+  20,
+  "Too many event actions. Try again in 1 hour."
+);
+
+// ── NEW ──────────────────────────────────────────────
+// Admin user-management actions — approve/reject/suspend/ban/activate.
+// This is deliberately its OWN limiter, not a reuse of jobActionLimiter,
+// because these routes carry a real security consequence: if an admin's
+// credentials are ever compromised, this is the limiter standing between
+// "one bad login" and "every user on the platform banned in a script
+// loop". Tighter than jobActionLimiter (20/hr) despite being a lower-
+// frequency legitimate action — a real admin approving/banning users
+// one at a time all day will never hit 40/hr; a compromised-credential
+// script would.
+const adminUserActionLimiter = createLimiter(
+  60,
+  40,
+  "Too many admin user-management actions. Try again in 1 hour."
+);
+
+// Admin moderation actions — resolve report, delete/hide post, suspend/
+// disband community. Same reasoning as adminUserActionLimiter (a
+// security boundary, not a UX-pacing limiter), grouped separately from
+// user-management since moderation queues can legitimately have more
+// items to clear in a busy hour (e.g. clearing 50 reported posts after
+// a spam wave is normal; banning 50 users in an hour is not).
+const adminModerationActionLimiter = createLimiter(
+  60,
+  60,
+  "Too many moderation actions. Try again in 1 hour."
+);
+
+// Admin broadcast — platform-wide announcements. Deliberately the
+// TIGHTEST admin limiter: a broadcast fans out to every matching user
+// at once, so even a handful of erroneous/malicious broadcasts in an
+// hour is already a platform-wide incident, not routine admin work.
+const adminBroadcastLimiter = createLimiter(
+  60,
+  5,
+  "Too many broadcasts sent. Try again in 1 hour."
+);
+
 module.exports = {
   loginLimiter,
   registerLimiter,
@@ -115,5 +164,9 @@ module.exports = {
   messageLimiter,
   communityActionLimiter,
   feedActionLimiter,
-  feedInteractionLimiter
+  feedInteractionLimiter,
+  eventActionLimiter,
+  adminUserActionLimiter,
+  adminModerationActionLimiter,
+  adminBroadcastLimiter
 };

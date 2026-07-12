@@ -74,7 +74,17 @@ const EVENTS = {
   // modules are built, the future Notification listener has a stable
   // name to attach to without anything needing to be renamed.
   COMMUNITY_INVITE_RECEIVED: "community.invite.received",
-  EVENT_APPROVED: "event.approved"
+  EVENT_APPROVED: "event.approved",
+
+  // ---- Learning (module not built yet — reserved ahead of time, same
+  // pattern as MENTORSHIP_SESSION_* and COMMUNITY_INVITE_RECEIVED above.
+  // Naming mirrors JOB_APPROVED / JOB_REJECTED's pending→approved shape
+  // since Academic Learning's CR-upload approval flow is the same
+  // pending → verified/rejected lifecycle as Jobs.) ----
+  RESOURCE_PUBLISHED: "learning.resource.published",             // Faculty upload — auto-published
+  RESOURCE_PENDING_VERIFICATION: "learning.resource.pending",    // CR upload — awaiting Faculty verification
+  RESOURCE_VERIFIED: "learning.resource.verified",               // Faculty approved a CR's pending upload
+  RESOURCE_REJECTED: "learning.resource.rejected"                // Faculty rejected a CR's pending upload
 };
 
 module.exports = EVENTS;

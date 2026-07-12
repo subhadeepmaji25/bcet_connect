@@ -103,7 +103,7 @@ const scheduleSession = async (mentorUserId, payload) => {
     status: SESSION_STATUS.SCHEDULED
   });
 
-  await notify(NOTIFICATION_EVENTS.SESSION_SCHEDULED, {
+  await notify(NOTIFICATION_EVENTS.MENTOR_SESSION_SCHEDULED, {
     userId: request.studentId,
     data: { topic: request.topic, scheduledAtLabel: formatSessionLabel(scheduledDate) },
     meta: { sessionId: session._id, requestId: request._id, conversationId: request.conversationId || null }
@@ -138,7 +138,7 @@ const completeSession = async (mentorUserId, sessionId) => {
   });
 
   const mentorName = await getUsernameSafe(mentorUserId);
-  await notify(NOTIFICATION_EVENTS.SESSION_COMPLETED, {
+  await notify(NOTIFICATION_EVENTS.MENTOR_SESSION_COMPLETED, {
     userId: session.studentId,
     data: { mentorName },
     meta: { sessionId: session._id, requestId: session.requestId, conversationId: session.conversationId || null }

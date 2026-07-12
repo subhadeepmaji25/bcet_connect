@@ -1,101 +1,140 @@
-// src/pages/admin/AdminDashboardPage.jsx
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import {
-  LayoutDashboard, Briefcase, GraduationCap, Clock,
-  CheckCircle, ShieldCheck, TrendingUp, Users
-} from 'lucide-react';
-import { getPendingJobs } from '../../api/jobs.api';
-import { listMentors } from '../../api/mentorship.api';
+import { Users, FileText, CheckCircle, Target, Activity } from 'lucide-react';
+import adminApi from '../../api/admin.api';
+import { useNavigate } from 'react-router-dom';
 
-function StatCard({ icon: Icon, label, value, color, to }) {
-  const card = (
-    <div className={`glass-card p-5 hover:border-${color}-500/30 transition-all duration-300`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl bg-${color}-500/20 flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 text-${color}-400`} />
-        </div>
-        {to && <span className="text-xs text-slate-500 hover:text-slate-300 transition-colors">View →</span>}
+const StatCard = ({ title, value, subtitle, icon: Icon, color, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`bg-white rounded-xl shadow-sm border border-slate-200 p-6 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+        <h3 className="text-3xl font-bold text-slate-900">{value}</h3>
       </div>
-      <p className={`text-2xl font-bold text-${color}-300 font-display`}>{value}</p>
-      <p className="text-slate-400 text-sm mt-0.5">{label}</p>
+      <div className={`p-3 rounded-lg ${color}`}>
+        <Icon size={24} className="text-white" />
+      </div>
     </div>
-  );
-  return to ? <Link to={to}>{card}</Link> : card;
-}
+    {subtitle && (
+      <div className="mt-4 flex items-center text-sm text-slate-600">
+        <span>{subtitle}</span>
+      </div>
+    )}
+  </div>
+);
 
 export default function AdminDashboardPage() {
-  const { data: pendingJobsData } = useQuery({ queryKey: ['pending-jobs'], queryFn: getPendingJobs });
-  const { data: mentorsData } = useQuery({ queryKey: ['mentors', 'all'], queryFn: listMentors });
+  const navigate = useNavigate();
+  const { data: overview, isLoading, error } = useQuery({
+    queryKey: ['adminDashboardOverview'],
+    queryFn: adminApi.getDashboardOverview
+  });
 
-  const pendingJobs = pendingJobsData?.data?.jobs?.length || 0;
-  const totalMentors = mentorsData?.data?.mentors?.length || 0;
-  const unverifiedMentors = mentorsData?.data?.mentors?.filter(m => !m.isVerified).length || 0;
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6 animate-pulse">
+        <div className="h-8 bg-slate-200 rounded w-1/4 mb-6"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1,2,3,4].map(i => <div key={i} className="h-32 bg-slate-200 rounded-xl"></div>)}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="p-8 text-red-500">Failed to load dashboard data.</div>;
+  }
+
+  // Assuming overview has: { totalUsers: { student, faculty, alumni, admin }, pendingApprovals, todaysActivity, platformEntities }
+  const totalUsers = overview?.totalUsers || {};
+  const pendingApprovals = overview?.pendingApprovals || 0;
+  const today = overview?.todaysActivity || {};
+  const entities = overview?.platformEntities || {};
+  
+  const totalUserCount = Object.values(totalUsers).reduce((a,b) => a+b, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center">
-          <LayoutDashboard className="w-6 h-6 text-primary-400" />
-        </div>
-        <div>
-          <h1 className="font-display text-2xl font-bold text-slate-100">Admin Dashboard</h1>
-          <p className="text-slate-400 text-sm">Manage BCET Connect platform</p>
-        </div>
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
+        <p className="text-slate-500 mt-1">Platform statistics and pending action items.</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Clock}       label="Pending Jobs"          value={pendingJobs}         color="amber"   to="/jobs/admin/pending" />
-        <StatCard icon={GraduationCap} label="Total Mentors"        value={totalMentors}        color="cyan"  />
-        <StatCard icon={ShieldCheck} label="Unverified Mentors"    value={unverifiedMentors}   color="rose"  />
-        <StatCard icon={CheckCircle} label="Platform Active"       value="✓"                   color="emerald" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Users"
+          value={totalUserCount}
+          subtitle={`Students: ${totalUsers.student || 0} | Faculty: ${totalUsers.faculty || 0}`}
+          icon={Users}
+          color="bg-blue-500"
+          onClick={() => navigate('/admin/users')}
+        />
+        <StatCard
+          title="Pending Approvals"
+          value={pendingApprovals}
+          subtitle="Action required"
+          icon={CheckCircle}
+          color="bg-amber-500"
+          onClick={() => navigate('/admin/approvals')}
+        />
+        <StatCard
+          title="Today's Activity"
+          value={(today.logins || 0) + (today.registrations || 0)}
+          subtitle={`${today.registrations || 0} New signups today`}
+          icon={Activity}
+          color="bg-emerald-500"
+        />
+        <StatCard
+          title="Platform Entities"
+          value={(entities.jobs || 0) + (entities.events || 0) + (entities.posts || 0)}
+          subtitle={`${entities.posts || 0} Posts | ${entities.jobs || 0} Jobs`}
+          icon={Target}
+          color="bg-purple-500"
+        />
       </div>
 
-      {/* Quick Actions */}
-      <div className="glass-card p-5">
-        <h2 className="section-title mb-4"><TrendingUp className="w-4 h-4 text-primary-400" /> Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Link to="/jobs/admin/pending" className="glass p-4 rounded-xl hover:border-amber-500/30 transition-all flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <Briefcase className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-200 group-hover:text-amber-300 transition-colors">Review Pending Jobs</p>
-              <p className="text-slate-500 text-sm">{pendingJobs} jobs awaiting approval</p>
-            </div>
-          </Link>
+      {/* Extended Breakdown (Optional Visuals) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center"><Users className="mr-2 h-5 w-5 text-slate-400"/> User Roles Distribution</h3>
+          <div className="space-y-4">
+            {Object.entries(totalUsers).map(([role, count]) => (
+              <div key={role} className="flex items-center">
+                <span className="w-24 capitalize text-sm font-medium text-slate-600">{role}</span>
+                <div className="flex-1 ml-4 bg-slate-100 rounded-full h-2.5">
+                  <div 
+                    className="bg-indigo-500 h-2.5 rounded-full" 
+                    style={{ width: `${(count / (totalUserCount || 1)) * 100}%` }}
+                  ></div>
+                </div>
+                <span className="ml-4 text-sm text-slate-500 w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-          <Link to="/mentors" className="glass p-4 rounded-xl hover:border-cyan-500/30 transition-all flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="w-5 h-5 text-cyan-400" />
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center"><FileText className="mr-2 h-5 w-5 text-slate-400"/> System Records</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-sm text-slate-500">Communities</p>
+              <p className="text-2xl font-bold text-slate-700">{entities.communities || 0}</p>
             </div>
-            <div>
-              <p className="font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">Verify Mentors</p>
-              <p className="text-slate-500 text-sm">{unverifiedMentors} mentors need verification</p>
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-sm text-slate-500">Mentors</p>
+              <p className="text-2xl font-bold text-slate-700">{entities.mentors || 0}</p>
             </div>
-          </Link>
-
-          <Link to="/search" className="glass p-4 rounded-xl hover:border-primary-500/30 transition-all flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
-              <Users className="w-5 h-5 text-primary-400" />
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-sm text-slate-500">Jobs</p>
+              <p className="text-2xl font-bold text-slate-700">{entities.jobs || 0}</p>
             </div>
-            <div>
-              <p className="font-semibold text-slate-200 group-hover:text-primary-300 transition-colors">Search Users</p>
-              <p className="text-slate-500 text-sm">Find and manage user profiles</p>
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-sm text-slate-500">Events</p>
+              <p className="text-2xl font-bold text-slate-700">{entities.events || 0}</p>
             </div>
-          </Link>
-
-          <Link to="/jobs" className="glass p-4 rounded-xl hover:border-emerald-500/30 transition-all flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">View All Jobs</p>
-              <p className="text-slate-500 text-sm">Browse approved job listings</p>
-            </div>
-          </Link>
+          </div>
         </div>
       </div>
     </div>

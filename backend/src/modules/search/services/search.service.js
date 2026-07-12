@@ -1,6 +1,37 @@
 // backend/src/modules/search/services/search.service.js
+//
+// UPDATED (Phase 3 — Search integration): added searchAll(), the only
+// change in this file. Every existing function below (searchUsers,
+// searchBySkill, buildSearchQuery, etc.) is byte-for-byte unchanged —
+// this file's job was always "search PEOPLE (SearchProfile)"; Learning
+// content lives in its own model/service (LearningSearchDocument.js /
+// learningSearch.service.js — see that file's header for why it's a
+// separate collection rather than a bolt-on to SearchProfile).
+// searchAll() is the thin seam that lets ONE query hit both indexes
+// and come back as one combined result, which is what actually closes
+// the "Search me Learning ka zero integration" gap — a global search
+// box has to return people AND resources/paths together, not force the
+// frontend to know two different endpoints exist.
+//
+// UPDATED (Phase 1 follow-up — Events search integration): added
+// searchEvents() and wired it into searchAll() as a third parallel
+// branch (Users + Learning + Events). This closes the other
+// zero-integration gap flagged in the phased upgrade plan: "Event.js
+// model already has a text index (title, description, venue) and a
+// tags field ... but search.service.js has no reference to Event".
+// Deliberately NOT given its own LearningSearchDocument-style synced
+// collection — Event is a small, single-collection domain (unlike
+// Learning's resource+path split), so searchEvents() reads Event
+// directly, same "search PEOPLE (SearchProfile)" directness this file
+// already has, rather than introducing a second sync pipeline for a
+// domain that doesn't need one. Read-only, one-directional: Search
+// reads FROM Events, Events never pushes INTO Search — same pull
+// pattern feedLearningInjector.js/feedEventInjector.js already use.
 const SearchProfile = require("../models/SearchProfile");
 const connectionService = require("../../connections/services/connection.service");
+const { searchLearningContent } = require("./learningSearch.service");
+const Event = require("../../events/models/Event");
+const { EVENT_STATUS } = require("../../events/constants/event.constants");
 const ApiError = require("../../../shared/errors/ApiError");
 
 const TOP_USERS_SELECT =
@@ -374,6 +405,120 @@ const getSearchStats = async () => {
   };
 };
 
+// ── NEW (Phase 3) — combined people + Learning content search ──────
+//
+// Deliberately thin: runs searchUsers() (unchanged, above) and
+// learningSearch.service.js's searchLearningContent() IN PARALLEL and
+// returns them as two labeled buckets, rather than trying to merge
+// people and resources/paths into one artificially-unified list with
+// a fake shared "relevance score" — a Profile and a LearningResource
+// don't have comparable ranking signals (searchScore vs
+// popularityScore), so forcing one sort order across both would be
+// misleading. The frontend renders two sections ("People" / "Learning")
+// under one search box, same two-bucket pattern this codebase already
+// uses elsewhere (e.g. Feed's injectLearningResources() keeping
+// LearningResource cards visually distinct from FeedPost cards rather
+// than pretending they're the same entity).
+//
+// `learning` filters (contentType/careerTrack/department/semester/type/
+// difficulty/skill/tag) are passed through untouched to
+// searchLearningContent() — see that function for what each means.
+// Only `q`/`page`/`limit` are shared between the two searches; a
+// caller wanting different paging for people vs content should call
+// searchUsers()/searchLearningContent() separately instead.
+// ── Events search (Phase 1 follow-up) ───────────────────────────────
+// Mirrors getApprovedEvents()'s query shape in event.service.js exactly
+// (same status/isDeleted/isArchived filter, same q/category/tag regex
+// approach) rather than reusing that function directly — search.service.js
+// never imports another module's *.service.js the same way
+// learningSearch.service.js documents for its own reasoning, keeping
+// Search's read path independent of an internal Events service
+// signature that could change for reasons unrelated to search.
+const EVENTS_SEARCH_SELECT =
+  "title description category tags venue isVirtual startTime endTime bannerUrl status organizedBy communityId";
+
+const buildEventSearchQuery = ({ q, category, tag } = {}) => {
+  const query = {
+    status: { $in: [EVENT_STATUS.APPROVED, EVENT_STATUS.LIVE] },
+    isDeleted: false,
+    isArchived: false
+  };
+
+  if (category) query.category = category;
+  if (tag) query.tags = buildRegex(tag);
+
+  if (q) {
+    const keywordRegex = buildRegex(q);
+    query.$or = [
+      { title: keywordRegex },
+      { description: keywordRegex },
+      { venue: keywordRegex },
+      { tags: keywordRegex }
+    ];
+  }
+
+  return query;
+};
+
+const searchEvents = async (filters = {}) => {
+  const { page, limit, skip } = buildPagination(filters);
+  const query = buildEventSearchQuery(filters);
+
+  const [events, total] = await Promise.all([
+    Event.find(query)
+      .select(EVENTS_SEARCH_SELECT)
+      .sort({ startTime: 1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("organizedBy", "username fullName role")
+      .lean(),
+    Event.countDocuments(query)
+  ]);
+
+  return {
+    events,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+};
+
+const searchAll = async (filters = {}, viewerId = null, viewerRole = null) => {
+  const {
+    q,
+    page,
+    limit,
+    includeUsers = true,
+    includeLearning = true,
+    includeEvents = true,
+    ...learningFilters
+  } = filters;
+
+  const [users, learning, events] = await Promise.all([
+    includeUsers
+      ? searchUsers({ q, page, limit }, viewerId)
+      : Promise.resolve({ users: [], pagination: { total: 0, page: 1, limit: 0, totalPages: 0 } }),
+    includeLearning
+      ? searchLearningContent({ ...learningFilters, q, page, limit }, viewerId, viewerRole)
+      : Promise.resolve({ results: [], pagination: { total: 0, page: 1, limit: 0, totalPages: 0 } }),
+    includeEvents
+      ? searchEvents({ q, page, limit })
+      : Promise.resolve({ events: [], pagination: { total: 0, page: 1, limit: 0, totalPages: 0 } })
+  ]);
+
+  return {
+    users: users.users,
+    usersPagination: users.pagination,
+    learning: learning.results,
+    learningPagination: learning.pagination,
+    events: events.events,
+    eventsPagination: events.pagination
+  };
+};
+
 module.exports = {
   searchUsers,
   searchBySkill,
@@ -384,5 +529,7 @@ module.exports = {
   getSearchProfileByUserId,
   getTopUsers,
   getTopMentors,
-  getSearchStats
+  getSearchStats,
+  searchEvents, // NEW (Phase 1 follow-up)
+  searchAll // NEW (Phase 3)
 };

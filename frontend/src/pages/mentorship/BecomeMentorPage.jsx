@@ -9,7 +9,11 @@ import { becomeMentor } from '../../api/mentorship.api';
 import { useAuth } from '../../hooks/useAuth';
 
 const SUPPORTED_LANGUAGES = ["english", "hindi", "bengali", "tamil", "telugu", "marathi"];
-const EXPERTISE_DOMAINS = ["frontend", "backend", "fullstack", "data_science", "ai_ml", "devops", "design", "product", "other"];
+const EXPERTISE_DOMAINS = [
+  "backend", "frontend", "ai", "ml", "cloud", "devops", 
+  "dsa", "placement", "resume-review", "interview", 
+  "research", "higher-studies", "open-source", "system-design"
+];
 const AVAILABILITY_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 const FloatingInput = ({ label, icon: Icon, error, ...props }) => (

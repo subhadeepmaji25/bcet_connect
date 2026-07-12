@@ -1,5 +1,12 @@
 // backend/src/modules/communities/models/Community.js
 //
+// FIX: duplicate schema index warning on {ownerId:1} — was declared
+// BOTH via `index: true` on the field AND via a separate
+// `communitySchema.index({ ownerId: 1 })` call below. Removed the
+// field-level `index: true`; the standalone `.index()` call is kept
+// since that's the pattern already used for tags/category/visibility/
+// status combos in this file.
+//
 // UPDATED: `settings.requireApproval` was already on the schema but was
 // dead weight — nothing read it. It's now wired up (see
 // community.constants.js's requiresJoinRequest() and the two services
@@ -50,7 +57,11 @@ const communitySchema = new mongoose.Schema({
   visibility: { type: String, enum: VISIBILITY_VALUES, default: VISIBILITY.PUBLIC, index: true },
   status: { type: String, enum: COMMUNITY_STATUS_VALUES, default: COMMUNITY_STATUS.ACTIVE, index: true },
 
-  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  // FIX: removed `index: true` here — was duplicating the standalone
+  // `communitySchema.index({ ownerId: 1 })` call below, which caused
+  // the Mongoose "Duplicate schema index" warning at boot.
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: "Conversation", default: null },
   settings: { type: communitySettingsSchema, default: () => ({}) },
   memberCount: { type: Number, default: 0, min: 0 },
@@ -66,7 +77,7 @@ communitySchema.index({ tags: 1 });
 communitySchema.index({ category: 1, visibility: 1, status: 1 });
 communitySchema.index({ ownerId: 1 });
 
-// NEW: supports listPublicCommunities()'s exact query shape —
+// Supports listPublicCommunities()'s exact query shape —
 // filter on {status, visibility}, sort by memberCount desc.
 communitySchema.index({ status: 1, visibility: 1, memberCount: -1 });
 

@@ -49,7 +49,7 @@ export default function SearchPage() {
     staleTime: 60000
   });
 
-  const suggestions = suggestionsData?.data?.suggestions || [];
+  const suggestions = suggestionsData?.data?.suggestions || suggestionsData?.data || [];
 
   // Click outside to close suggestions
   useEffect(() => {

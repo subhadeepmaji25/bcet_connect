@@ -1,4 +1,15 @@
 // backend/src/shared/media/media.constants.js
+//
+// UPDATED (Learning module foundation): Added MEDIA_TYPES.LEARNING_RESOURCE.
+// resourceType "auto" (like CHAT_ATTACHMENT) because a single resource can
+// be a PDF note, a PPT, or an image scan of handwritten notes — same
+// reasoning already used for chat attachments. Allowed mimes are
+// document + image (no video/audio — Learning resources link to YouTube
+// externally rather than hosting video, per the Career Learning content
+// strategy: curated external links, not self-hosted media). Size capped
+// at 10MB, same tier as CHAT_ATTACHMENT — lecture notes/PPTs run larger
+// than a resume but don't need CHAT_VIDEO-level allowance.
+
 const CLOUDINARY_ROOT_FOLDER = process.env.CLOUDINARY_ROOT_FOLDER || "bcet-connect";
 
 const MEDIA_TYPES = Object.freeze({
@@ -15,7 +26,10 @@ const MEDIA_TYPES = Object.freeze({
   // never accidentally loosens the other.
   CHAT_VOICE_NOTE: "chat_voice_note",
   CHAT_VIDEO: "chat_video",
-  CERTIFICATE: "certificate"
+  CERTIFICATE: "certificate",
+
+  // ── Learning module foundation ──
+  LEARNING_RESOURCE: "learning_resource"
 });
 
 const MEDIA_FOLDERS = Object.freeze({
@@ -28,7 +42,8 @@ const MEDIA_FOLDERS = Object.freeze({
   [MEDIA_TYPES.CHAT_ATTACHMENT]: "chat",
   [MEDIA_TYPES.CHAT_VOICE_NOTE]: "chat/voice",
   [MEDIA_TYPES.CHAT_VIDEO]: "chat/video",
-  [MEDIA_TYPES.CERTIFICATE]: "certificates"
+  [MEDIA_TYPES.CERTIFICATE]: "certificates",
+  [MEDIA_TYPES.LEARNING_RESOURCE]: "learning/resources"
 });
 
 const MEDIA_RESOURCE_TYPE = Object.freeze({
@@ -41,7 +56,8 @@ const MEDIA_RESOURCE_TYPE = Object.freeze({
   [MEDIA_TYPES.CHAT_ATTACHMENT]: "auto",
   [MEDIA_TYPES.CHAT_VOICE_NOTE]: "video", // Cloudinary treats audio under the "video" resource type
   [MEDIA_TYPES.CHAT_VIDEO]: "video",
-  [MEDIA_TYPES.CERTIFICATE]: "raw"
+  [MEDIA_TYPES.CERTIFICATE]: "raw",
+  [MEDIA_TYPES.LEARNING_RESOURCE]: "auto"
 });
 
 const ALLOWED_MIME_TYPES = Object.freeze({
@@ -67,7 +83,8 @@ const MEDIA_ALLOWED_MIME_TYPES = Object.freeze({
   [MEDIA_TYPES.CHAT_ATTACHMENT]: [...ALLOWED_MIME_TYPES.document, ...ALLOWED_MIME_TYPES.image],
   [MEDIA_TYPES.CHAT_VOICE_NOTE]: ALLOWED_MIME_TYPES.audio,
   [MEDIA_TYPES.CHAT_VIDEO]: ALLOWED_MIME_TYPES.video,
-  [MEDIA_TYPES.CERTIFICATE]: ALLOWED_MIME_TYPES.document
+  [MEDIA_TYPES.CERTIFICATE]: ALLOWED_MIME_TYPES.document,
+  [MEDIA_TYPES.LEARNING_RESOURCE]: [...ALLOWED_MIME_TYPES.document, ...ALLOWED_MIME_TYPES.image]
 });
 
 const MB = 1024 * 1024;
@@ -85,7 +102,10 @@ const MEDIA_MAX_SIZE_BYTES = Object.freeze({
   // Cloudinary bandwidth/storage makes generous limits risky here.
   [MEDIA_TYPES.CHAT_VOICE_NOTE]: 5 * MB,
   [MEDIA_TYPES.CHAT_VIDEO]: 25 * MB,
-  [MEDIA_TYPES.CERTIFICATE]: 5 * MB
+  [MEDIA_TYPES.CERTIFICATE]: 5 * MB,
+  // Lecture notes/PPTs can legitimately run larger than a resume;
+  // capped same as CHAT_ATTACHMENT rather than given RESUME's tighter 5MB.
+  [MEDIA_TYPES.LEARNING_RESOURCE]: 10 * MB
 });
 
 const MEDIA_TRANSFORMATION_PRESETS = Object.freeze({
@@ -104,6 +124,9 @@ const MEDIA_TRANSFORMATION_PRESETS = Object.freeze({
   [MEDIA_TYPES.FEED_IMAGE]: [
     { width: 1080, crop: "limit", quality: "auto" }
   ]
+  // No transformation preset for LEARNING_RESOURCE — documents (PDF/PPT)
+  // aren't image-transformable, and the occasional scanned-image note
+  // should be stored at original resolution for readability, not resized.
 });
 
 module.exports = {

@@ -1,4 +1,24 @@
 // backend/src/modules/feed/services/feedPost.service.js
+//
+// PHASE 3 UPDATE: getFeed() now also calls injectLearningResources()
+// after the existing Recommendation + Community injectors — same
+// pull-only chain, Feed still owns zero Learning logic, just calls
+// into it read-only on the first page. Order chosen deliberately:
+// Community -> Recommendation -> Learning, so Learning cards land
+// last/closest-to-the-user's-scroll-position among the three synthetic
+// card types, since a same-department resource upload is the most
+// personally relevant of the three injected card types for a student.
+//
+// UPDATED (Phase 1 follow-up — Events integration): getFeed() now also
+// calls injectUpcomingEvents() as the last link in the chain — Community
+// -> Recommendation -> Learning -> Events. Events lands last for the
+// same "closest to scroll position = more timely/actionable" reasoning
+// Learning was placed after Community/Recommendation for: an upcoming
+// event a student can still register for is at least as immediately
+// actionable as a same-department resource upload, so it earns the
+// same "last in chain" placement rather than being squeezed in the
+// middle of an existing order that already has a stated rationale.
+
 const FeedPost = require("../models/FeedPost");
 const User = require("../../auth/models/User");
 const ApiError = require("../../../shared/errors/ApiError");
@@ -6,6 +26,8 @@ const { getCandidateAuthorIds } = require("./feedCandidate.service");
 const { rankFeedPosts } = require("./feedRanking.service");
 const { injectRecommendations } = require("./feedRecommendationInjector");
 const { injectCommunityPosts } = require("./feedCommunityInjector");
+const { injectLearningResources } = require("./feedLearningInjector");
+const { injectUpcomingEvents } = require("./feedEventInjector");
 const { react } = require("./feedReaction.service");
 const { assertContentAllowed, inspectContent } = require("./feedModeration.service");
 const { canViewPost, filterVisiblePosts } = require("./feedAccess.service");
@@ -163,8 +185,22 @@ const getFeed = async (userId, { cursor, limit = PAGINATION.DEFAULT_LIMIT } = {}
   const visibleRecent = await filterVisiblePosts(userId, recentPosts);
   const rankedRecent = rankFeedPosts(visibleRecent, sourceFlags);
   const realPosts = [...visiblePinned, ...rankedRecent].slice(0, pageSize);
+
+  // Injection chain — Community -> Recommendation -> Learning -> Events.
+  // Each injector is independently try/catch-guarded internally (see
+  // their own file headers), so a failure in any one never breaks the
+  // other three or the real posts underneath them.
   const posts = isFirstPage
-    ? await injectRecommendations(await injectCommunityPosts(realPosts, userId), userId)
+    ? await injectUpcomingEvents(
+        await injectLearningResources(
+          await injectRecommendations(
+            await injectCommunityPosts(realPosts, userId),
+            userId
+          ),
+          userId
+        ),
+        userId
+      )
     : realPosts;
 
   const nextCursor = recentPosts.length === remaining && recentPosts.length

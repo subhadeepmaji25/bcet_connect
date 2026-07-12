@@ -4,6 +4,7 @@ const {
   getProfileByUserId,
   getPublicProfile,
   updateLastActive,
+  setCRStatus, // NEW (Phase 1a)
 } = require("../services/profile.service");
 
 const { uploadAvatar, deleteAvatar } = require("../services/avatar.service");
@@ -42,16 +43,6 @@ const getMyProfileController = async (req, res, next) => {
   }
 };
 
-// getPublicProfile(viewerId, targetUserId) returns { profile, connectionStatus }
-// — a flat object, not just a profile document. Destructure both fields
-// out and spread them into `data` directly, rather than re-wrapping the
-// whole result as `data: { profile }` (which would double-nest the
-// profile as data.profile.profile and silently drop connectionStatus —
-// the exact signal the frontend needs to render "Connect" vs "Pending"
-// vs "Message" vs "Private profile" on someone else's profile page).
-//
-// authMiddleware (see user.routes.js) guarantees req.user exists here,
-// so viewerId is always a real id, never undefined.
 const getPublicProfileController = async (req, res, next) => {
   try {
     const { userId: targetUserId } = req.params;
@@ -83,12 +74,6 @@ const updateLastActiveController = async (req, res, next) => {
   }
 };
 
-// ─────────────────────────────────────────
-// Avatar — separate concern from updateProfile(). That controller only
-// ever writes body fields the client already has as strings;
-// req.file (the actual binary) is handled here, same separation
-// resume.controller.js keeps from profile.controller.js.
-// ─────────────────────────────────────────
 const uploadAvatarController = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -121,6 +106,28 @@ const deleteAvatarController = async (req, res, next) => {
   }
 };
 
+// ── NEW (Phase 1a) ────────────────────────────────────────────────
+// req.user.role is NOT re-passed into the service — role gating for
+// this action lives entirely at the route layer (allowRoles("faculty",
+// "admin")), same trust boundary already used by learning.routes.js's
+// verify/publish/archive endpoints.
+const setCRStatusController = async (req, res, next) => {
+  try {
+    const { userId: targetUserId } = req.params;
+    const { isCR } = req.body;
+    const result = await setCRStatus(targetUserId, isCR);
+    logger.info("CR status changed", { module: "Users", actingUserId: req.user.id, targetUserId, isCR });
+    return sendResponse(res, {
+      success: result.success,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    logger.error("Set CR status failed", error, { module: "Users" });
+    next(error);
+  }
+};
+
 module.exports = {
   updateProfileController,
   getMyProfileController,
@@ -128,4 +135,5 @@ module.exports = {
   updateLastActiveController,
   uploadAvatarController,
   deleteAvatarController,
+  setCRStatusController, // NEW
 };

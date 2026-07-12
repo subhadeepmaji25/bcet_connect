@@ -1,21 +1,19 @@
 // backend/src/modules/users/services/profile.service.js
 //
-// NOTE: no changes needed for PROFILE_COMPLETED — that event fires from
-// engines/user-sync/syncUserIntelligence.js, called below via
-// syncUserIntelligence(userId). Not duplicated here.
-//
-// FIXED getPublicProfile(): getConnectionStatus() returns an OBJECT
-// ({ status, requestId? }), not a bare string. isConnected used to
-// compare the whole object against the literal string "connected",
-// which is never true — so a genuinely connected viewer was always
-// treated as NOT connected, and got shown the same limited/locked
-// profile card as a stranger for any private-visibility profile.
+// NEW (Phase 1a): setCRStatus() — the missing write-side of isCR.
+// Profile.js/profile.validator.js already correctly EXCLUDE isCR from
+// student-editable fields (see file header comments in both). But
+// excluding a write path only protects the field — it doesn't create
+// the legitimate write path a Faculty/Admin actually needs. Without
+// this function, resolveUploaderRole() in resource.service.js can read
+// isCR but nobody can ever set it to true, so the entire CR-upload
+// pathway is unreachable in practice. This closes that gap.
 
 const Profile = require("../models/Profile");
 const ApiError = require("../../../shared/errors/ApiError");
 const { syncUserIntelligence } = require("../../../engines/user-sync/syncUserIntelligence");
 
-const ALLOWED_PROFILE_FIELDS = ["fullName","headline","bio","avatar","avatarPublicId","coverImage","coverImagePublicId","branch","department","currentYear","passoutYear","currentCompany","currentRole","location","interests","searchableSkills","socialLinks","visibility","isMentor"];
+const ALLOWED_PROFILE_FIELDS = ["fullName","headline","bio","avatar","avatarPublicId","coverImage","coverImagePublicId","branch","department","currentYear","passoutYear","currentCompany","currentRole","location","interests","searchableSkills","socialLinks","visibility","isMentor","semester","section"];
 
 const updateProfile = async (userId, payload) => {
   const profile = await Profile.findOne({ userId });
@@ -84,4 +82,39 @@ const updateLastActive = async (userId) => {
   await Profile.updateOne({ userId }, { $set: { lastActiveAt: new Date() } });
 };
 
-module.exports = { updateProfile, getProfileByUserId, getPublicProfile, updateLastActive };
+// ── NEW (Phase 1a) ────────────────────────────────────────────────
+//
+// actingUserId/actingUserRole = the Faculty/Admin making the request
+// (already role-gated at the route layer via allowRoles("faculty","admin")
+// — this function does NOT re-check role, same trust boundary
+// resource.service.js's verifyResource() keeps toward its own route
+// guard). targetUserId = the student being granted/revoked CR status.
+//
+// Deliberately does NOT restrict Faculty to only their "own" department
+// students — Faculty in this codebase are not scoped to a single
+// department anywhere else (Subject.facultyId has no department-match
+// enforcement either), so adding that restriction here would be an
+// inconsistent, one-off rule. Admin and Faculty are treated identically
+// for this action, same as verifyResource()'s "userRole !== admin"
+// branch already does for Faculty-vs-Admin parity.
+const setCRStatus = async (targetUserId, isCR) => {
+  const targetProfile = await Profile.findOne({ userId: targetUserId });
+  if (!targetProfile) {
+    throw ApiError.notFound("Student profile not found");
+  }
+
+  if (targetProfile.role !== "student") {
+    throw ApiError.badRequest("Only a student can be granted CR status");
+  }
+
+  targetProfile.isCR = Boolean(isCR);
+  await targetProfile.save();
+
+  return {
+    success: true,
+    message: isCR ? "Student marked as Class Representative" : "CR status removed",
+    data: { profile: targetProfile }
+  };
+};
+
+module.exports = { updateProfile, getProfileByUserId, getPublicProfile, updateLastActive, setCRStatus };

@@ -1,19 +1,14 @@
 // backend/src/core/bootstrap.js
 //
-// UPGRADE: two things that existed as code but were never actually
-// wired to run:
-//   1. expireOverdueJobs() — the function existed in job.service.js
-//      but nothing ever called it. Jobs past their deadline stayed
-//      "approved" forever unless someone happened to open that exact
-//      job's detail page (which lazily expires only THAT one job).
-//   2. Cloudinary connectivity — cloudinary.config.js already exposes
-//      verifyConnection(), added earlier, but bootstrap never called it.
-//      Startup now surfaces a clear warning if Cloudinary credentials
-//      are wrong, instead of only finding out on the first real upload.
+// UPDATED (this pass): registers scheduleEventLifecycleCron() alongside
+// scheduleJobExpiryCron() and scheduleMentorSessionCron() — same boot
+// sequence position, same fire-and-forget-but-logged philosophy. Events
+// won't auto-transition to live/completed/archived until the next
+// restart or manual intervention if this fails to register, but it
+// never crashes the server.
 //
-// Neither of these being unavailable should crash the server — jobs
-// still work without the cron running (just won't auto-expire), and
-// most of the app doesn't touch Cloudinary at all.
+// (kept from earlier pass) registers scheduleMentorSessionCron()
+// alongside the existing scheduleJobExpiryCron() — same reasoning.
 
 const cron = require("node-cron");
 const createApp = require("./app");
@@ -22,6 +17,8 @@ const { env, app: appConfig } = require("../../config");
 const logger = require("../shared/logger/logger");
 const cloudinary = require("../shared/media/cloudinary.config");
 const { expireOverdueJobs } = require("../modules/jobs/services/job.service");
+const { scheduleMentorSessionCron } = require("./scheduleMentorSessionCron");
+const { scheduleEventLifecycleCron } = require("./scheduleEventLifecycleCron"); // NEW
 
 const validateStartup = () => {
   logger.success("Environment Loaded");
@@ -90,6 +87,8 @@ const bootstrap = async () => {
     validateStartup();
 
     scheduleJobExpiryCron();
+    scheduleMentorSessionCron();
+    scheduleEventLifecycleCron(); // NEW
     checkCloudinaryConnection();
 
     logger.success(`${appConfig.name} Bootstrap Completed`);

@@ -13,6 +13,15 @@ const USER_ROLES = ["student", "faculty", "alumni", "admin"];
 
 const ACCOUNT_STATUS = ["pending", "active", "rejected", "suspended"];
 
+// UPGRADE: distinguishes a reversible admin suspension from a harder ban
+// at the SCHEMA level, not just in logs/notifications. Both still map to
+// accountStatus:"suspended" (ACCOUNT_STATUS enum below is untouched, so
+// login.service.js's existing pending/suspended checks keep working
+// exactly as before) — this field is purely additive metadata that
+// admin/services/adminUser.service.js's suspendUser()/banUser()/
+// activateUser() read and write.
+const SUSPENSION_TYPES = ["suspend", "ban"];
+
 const userSchema = new mongoose.Schema(
   {
     role: {
@@ -86,6 +95,16 @@ const userSchema = new mongoose.Schema(
       default: "pending"
     },
 
+    // NEW: only meaningful when accountStatus === "suspended". null for
+    // every other status. Set/cleared exclusively by
+    // admin/services/adminUser.service.js — suspendUser() -> "suspend",
+    // banUser() -> "ban", activateUser() -> resets to null.
+    suspensionType: {
+      type: String,
+      enum: [...SUSPENSION_TYPES, null],
+      default: null
+    },
+
     tokenVersion: {
       type: Number,
       default: 0
@@ -142,6 +161,12 @@ const userSchema = new mongoose.Schema(
 // Compound index for role-based queries
 userSchema.index({ role: 1, accountStatus: 1 });
 
+// NEW: compound index for the admin dashboard's "list banned users" /
+// "list suspended users" filter (adminUser.service.js's listUsers() with
+// a suspensionType query param) — avoids a full collection scan when
+// accountStatus:"suspended" is filtered further by suspensionType.
+userSchema.index({ accountStatus: 1, suspensionType: 1 });
+
 // ─────────────────────────────────────────
 // Instance Methods
 // ─────────────────────────────────────────
@@ -170,6 +195,17 @@ userSchema.methods.isRejected = function () {
 
 userSchema.methods.isSuspended = function () {
   return this.accountStatus === "suspended";
+};
+
+// NEW: convenience helpers so callers (adminDashboard.service.js,
+// serializers, frontend-facing mappers) don't need to know the internal
+// suspensionType string values directly.
+userSchema.methods.isBanned = function () {
+  return this.accountStatus === "suspended" && this.suspensionType === "ban";
+};
+
+userSchema.methods.isTemporarilySuspended = function () {
+  return this.accountStatus === "suspended" && this.suspensionType === "suspend";
 };
 
 userSchema.methods.isLocked = function () {

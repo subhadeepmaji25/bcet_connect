@@ -8,6 +8,7 @@ const applyForJobController=asyncHandler(async(req,res)=>{
 const result=await applicationService.applyForJob(
 req.params.jobId,
 req.user.id,
+req.user.role,
 req.body
 );
 logger.info("Job application submitted",{
